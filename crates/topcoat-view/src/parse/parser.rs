@@ -59,7 +59,7 @@ impl<'a> Parser<'a> {
     }
 
     fn at(&self, kind: TokenKind) -> bool {
-        self.current().map_or(false, |t| t.kind() == kind)
+        self.current().is_some_and(|t| t.kind() == kind)
     }
 
     /// Consume the current token and add it to the tree.
