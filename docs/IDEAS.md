@@ -1,6 +1,22 @@
 ```rust
 use topcoat::{component, html, Router};
 
+async fn use_auth() -> Result<Option<User>, topcoat::Error> {
+    match use_session() {
+        Some(session) => User::first_by_session(session.id).exec(&mut use_db()).await?,
+        None => Ok(None),
+    }
+}
+
+async fn require_auth() -> Result<User, topcoat::Error> {
+    let user = use_auth().await?;
+    match user {
+        Some(user) => user,
+        None => topcoat::redirect(sign_in),
+    },
+}
+
+
 #[component]
 fn my_button(button_attrs: topcoat::dom::button::Attrs) {
 
@@ -10,11 +26,11 @@ fn my_button(button_attrs: topcoat::dom::button::Attrs) {
 }
 
 #[component]
-async fn events() -> Html {
-    let user = require_auth().await;
+async fn events() -> Result<Html, anyhow::Error> {
+    let user = require_auth().await?;
 
     let db = use_db();
-    let events = Event::get_by_user_id().exec(&mut db).await;
+    let events = Event::get_by_user_id().exec(&mut db).await?;
 
     html! {
         div class="flex flex-col" {
@@ -51,7 +67,7 @@ async fn nav(children: Html) -> Html {
                         // Inline API handlers?
                         (my_button) onclick={async || {
                             delete_session().await;
-                            return redirect(sign_in);
+                            return topcoat::redirect(sign_in);
                         }} {
                             "Sign out"
                         }
