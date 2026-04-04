@@ -1,15 +1,19 @@
 mod attribute;
 mod element;
 mod node;
+mod node_block;
+mod node_expr;
+mod node_if;
 mod parse_option;
 mod view;
-mod view_expr;
 
 use attribute::*;
 use element::*;
 use node::*;
+use node_block::*;
+use node_expr::*;
+use node_if::*;
 use parse_option::*;
 use view::*;
-use view_expr::*;
 
 pub use view::View;
