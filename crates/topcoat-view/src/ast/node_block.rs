@@ -3,7 +3,7 @@ use syn::{
     parse::{Parse, ParseStream},
 };
 
-use crate::ast::{Node, ViewWriter};
+use crate::{ast::Node, view_writer::ViewWriter};
 
 pub struct NodeBlock {
     _brace: syn::token::Brace,

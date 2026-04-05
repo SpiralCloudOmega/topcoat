@@ -1,11 +1,12 @@
-use proc_macro2::TokenStream;
-use quote::quote;
 use syn::{
-    ExprIf, Token,
+    Token,
     parse::{Parse, ParseStream},
 };
 
-use crate::ast::{NodeBlock, ViewWriter, parse_option::ParseOption};
+use crate::{
+    ast::{NodeBlock, parse_option::ParseOption},
+    view_writer::ViewWriter,
+};
 
 pub struct NodeIf {
     if_token: Token![if],
@@ -15,7 +16,9 @@ pub struct NodeIf {
 }
 
 impl NodeIf {
-    pub fn write(&self, writer: &mut ViewWriter) {}
+    pub fn write(&self, writer: &mut ViewWriter) {
+        let writer = writer.begin_if(&self.cond);
+    }
 }
 
 impl Parse for NodeIf {

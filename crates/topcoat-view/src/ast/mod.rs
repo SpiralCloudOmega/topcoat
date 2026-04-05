@@ -14,6 +14,5 @@ use node_block::*;
 use node_expr::*;
 use node_if::*;
 use parse_option::*;
-use view::*;
 
 pub use view::View;

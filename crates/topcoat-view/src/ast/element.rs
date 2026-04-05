@@ -3,7 +3,10 @@ use syn::{
     parse::{Parse, ParseStream},
 };
 
-use crate::ast::{Attributes, ParseOption, ViewWriter, node_block::NodeBlock};
+use crate::{
+    ast::{Attributes, ParseOption, node_block::NodeBlock},
+    view_writer::ViewWriter,
+};
 
 pub struct Element {
     name: Ident,

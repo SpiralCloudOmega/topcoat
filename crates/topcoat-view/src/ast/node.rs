@@ -3,7 +3,10 @@ use syn::{
     parse::{Parse, ParseStream},
 };
 
-use crate::ast::{Element, NodeExpr, NodeIf, ParseOption, ViewWriter};
+use crate::{
+    ast::{Element, NodeExpr, NodeIf, ParseOption},
+    view_writer::ViewWriter,
+};
 
 pub enum Node {
     Text(LitStr),
