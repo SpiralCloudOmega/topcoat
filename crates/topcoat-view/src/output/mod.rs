@@ -13,7 +13,7 @@ use quote::{ToTokens, quote};
 pub(crate) struct ViewWriter {
     pub(self) tokens: TokenStream,
     static_segment: String,
-    static_len: usize,
+    capacity: usize,
 }
 
 impl ViewWriter {
@@ -25,7 +25,7 @@ impl ViewWriter {
         if !self.static_segment.is_empty() {
             let static_segment = &self.static_segment;
             quote! { writer.push_fragment(#static_segment); }.to_tokens(&mut self.tokens);
-            self.static_len += self.static_segment.len();
+            self.capacity += self.static_segment.len();
             self.static_segment.clear();
         }
     }
@@ -55,13 +55,6 @@ impl ViewWriter {
         self.flush();
         quote! { writer.push_fragment(#expr); }.to_tokens(&mut self.tokens);
     }
-
-    pub(self) fn merge_into(&mut self, parent: &mut Self) {
-        parent.flush();
-        self.flush();
-        parent.static_len += self.static_len;
-        self.tokens.to_tokens(&mut parent.tokens);
-    }
 }
 
 impl ToTokens for ViewWriter {
@@ -75,12 +68,12 @@ impl ToTokens for ViewWriter {
         }
 
         let buffer = &self.tokens;
-        let static_len = self.static_len + static_segment.len();
+        let capacity = self.capacity + static_segment.len();
         let final_segment = (!static_segment.is_empty()).then(|| {
             quote! { writer.push_fragment(#static_segment); }
         });
         quote! {{
-            let mut writer = ::topcoat::view::ViewWriter::with_capacity(#static_len);
+            let mut writer = ::topcoat::view::ViewWriter::with_capacity(#capacity);
             #buffer
             #final_segment
             writer.finish()

@@ -1,12 +1,13 @@
 use std::ops::{Deref, DerefMut};
 
-use quote::quote;
+use quote::{ToTokens, quote};
 use syn::Expr;
 
 use crate::output::ViewWriter;
 
 impl ViewWriter {
     pub fn begin_if<'a>(&'a mut self, cond: &'a Expr) -> ViewWriterIf<'a> {
+        self.flush();
         ViewWriterIf::new(self, cond)
     }
 }
@@ -28,7 +29,7 @@ impl<'a> ViewWriterIf<'a> {
 
     pub fn begin_else(mut self) -> ViewWriterElse<'a> {
         let writer = self.flush();
-        ViewWriterElse::new(writer)
+        ViewWriterElse::new(writer, self.capacity)
     }
 
     fn flush(&mut self) -> &'a mut ViewWriter {
@@ -36,8 +37,7 @@ impl<'a> ViewWriterIf<'a> {
         let cond = self.cond;
         self.writer.flush();
         let body = &self.writer.tokens;
-        self.writer.tokens = quote! { if #cond { #body } };
-        self.writer.merge_into(parent);
+        quote! { if #cond { #body } }.to_tokens(&mut parent.tokens);
         parent
     }
 }
@@ -67,13 +67,15 @@ impl Drop for ViewWriterIf<'_> {
 pub(crate) struct ViewWriterElse<'a> {
     parent: &'a mut ViewWriter,
     writer: ViewWriter,
+    if_capacity: usize,
 }
 
 impl<'a> ViewWriterElse<'a> {
-    pub(super) fn new(parent: &'a mut ViewWriter) -> Self {
+    pub(super) fn new(parent: &'a mut ViewWriter, if_capacity: usize) -> Self {
         Self {
             parent,
             writer: ViewWriter::new(),
+            if_capacity,
         }
     }
 }
@@ -96,7 +98,8 @@ impl Drop for ViewWriterElse<'_> {
     fn drop(&mut self) {
         self.writer.flush();
         let tokens = &self.writer.tokens;
-        self.writer.tokens = quote! { else { #tokens } };
-        self.writer.merge_into(self.parent);
+        quote! { else { #tokens } }.to_tokens(&mut self.parent.tokens);
+        // The capacity needed for an if-else is the shortest of the two.
+        self.parent.capacity += self.if_capacity.min(self.capacity);
     }
 }

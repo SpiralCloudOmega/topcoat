@@ -8,6 +8,7 @@ use crate::output::ViewWriter;
 
 impl ViewWriter {
     pub fn begin_match<'a>(&'a mut self, expr: &'a Expr) -> ViewWriterMatch<'a> {
+        self.flush();
         ViewWriterMatch::new(self, expr)
     }
 }
@@ -16,7 +17,7 @@ pub(crate) struct ViewWriterMatch<'a> {
     parent: &'a mut ViewWriter,
     expr: &'a Expr,
     arms: TokenStream,
-    static_len: usize,
+    capacity: usize,
 }
 
 impl<'a> ViewWriterMatch<'a> {
@@ -25,7 +26,7 @@ impl<'a> ViewWriterMatch<'a> {
             parent,
             expr,
             arms: TokenStream::new(),
-            static_len: 0,
+            capacity: 0,
         }
     }
 
@@ -45,7 +46,7 @@ impl Drop for ViewWriterMatch<'_> {
         let arms = &self.arms;
         let tokens = quote! { match #expr { #arms } };
         tokens.to_tokens(&mut self.parent.tokens);
-        self.parent.static_len += self.static_len;
+        self.parent.capacity += self.capacity;
     }
 }
 
@@ -92,10 +93,11 @@ impl Drop for ViewWriterMatchArm<'_, '_> {
             quote! { #pat => { #tokens } }
         };
         arm.to_tokens(&mut self.parent.arms);
-        if self.parent.static_len == 0 {
-            self.parent.static_len = self.writer.static_len;
+        // The capacity needed for a match is the capacity of the shortest branch.
+        if self.parent.capacity == 0 {
+            self.parent.capacity = self.writer.capacity;
         } else {
-            self.parent.static_len = self.parent.static_len.min(self.writer.static_len);
+            self.parent.capacity = self.parent.capacity.min(self.writer.capacity);
         }
     }
 }

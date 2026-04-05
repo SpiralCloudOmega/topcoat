@@ -1,12 +1,13 @@
 use std::ops::{Deref, DerefMut};
 
-use quote::quote;
+use quote::{ToTokens, quote};
 use syn::{Expr, Pat};
 
 use crate::output::ViewWriter;
 
 impl ViewWriter {
     pub fn begin_for_loop<'a>(&'a mut self, pat: &'a Pat, expr: &'a Expr) -> ViewWriterForLoop<'a> {
+        self.flush();
         ViewWriterForLoop::new(self, pat, expr)
     }
 }
@@ -49,7 +50,6 @@ impl Drop for ViewWriterForLoop<'_> {
         let tokens = &self.writer.tokens;
         let pat = self.pat;
         let expr = self.expr;
-        self.writer.tokens = quote! { for #pat in #expr { #tokens } };
-        self.writer.merge_into(self.parent);
+        quote! { for #pat in #expr { #tokens } }.to_tokens(&mut self.parent.tokens)
     }
 }
