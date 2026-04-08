@@ -1,6 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-use quote::{ToTokens, quote};
+use quote::quote;
 use syn::{Expr, Pat};
 
 use crate::output::ViewWriter;
@@ -50,6 +50,7 @@ impl Drop for ViewWriterForLoop<'_> {
         let tokens = &self.writer.tokens;
         let pat = self.pat;
         let expr = self.expr;
-        quote! { for #pat in #expr { #tokens } }.to_tokens(&mut self.parent.tokens)
+        self.parent
+            .push_raw(quote! { for #pat in #expr { #tokens } });
     }
 }

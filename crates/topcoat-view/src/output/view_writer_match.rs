@@ -44,8 +44,7 @@ impl Drop for ViewWriterMatch<'_> {
         self.parent.flush();
         let expr = self.expr;
         let arms = &self.arms;
-        let tokens = quote! { match #expr { #arms } };
-        tokens.to_tokens(&mut self.parent.tokens);
+        self.parent.push_raw(quote! { match #expr { #arms } });
         self.parent.capacity += self.capacity;
     }
 }
