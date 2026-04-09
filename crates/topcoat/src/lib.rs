@@ -6,8 +6,6 @@ pub mod view {
 
 pub mod component {
     pub trait Component {
-        type Props;
+        fn render(self) -> impl Future<Output = crate::view::View> + Send;
     }
-
-    pub trait Props {}
 }

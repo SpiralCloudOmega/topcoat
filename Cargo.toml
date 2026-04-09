@@ -20,6 +20,8 @@ topcoat = { path = "crates/topcoat" }
 topcoat-macro = { path = "crates/topcoat-macro" }
 topcoat-view = { path = "crates/topcoat-view" }
 
+heck = "0.5.0"
 proc-macro2 = "1.0.106"
 quote = "1.0.45"
 syn = { version = "2.0.117", features = ["full"] }
+tokio = { version = "1.51.1" }

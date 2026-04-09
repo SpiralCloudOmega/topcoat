@@ -43,6 +43,12 @@ impl Fragment for &View {
     }
 }
 
+impl Fragment for View {
+    fn as_str(&self) -> &str {
+        &self.buf
+    }
+}
+
 #[derive(Default)]
 pub struct ViewWriter {
     buf: String,

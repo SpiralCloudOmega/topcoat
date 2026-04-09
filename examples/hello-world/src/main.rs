@@ -1,18 +1,21 @@
-// #[topcoat::component]
-// fn button(x: i32, y: i32, z: i32, child: topcoat::View) -> topcoat::view::View {
-//     topcoat::view! {
-//         <button>(child)</button>
-//     }
-// }
+use topcoat::{component, view, view::View};
 
-fn main() {
-    let content = topcoat::view! {
+#[component]
+async fn button(child: View) -> View {
+    view! {
+        <button class="button">(child)</button>
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    let content = view! {
         <html>
             <head>
                 <title>"hello world"</title>
             </head>
             <body id="test">
-                [button id="5"]
+                [button]
                     "click me"
                 [/button]
             </body>

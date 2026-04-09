@@ -1,3 +1,4 @@
+use quote::quote;
 use syn::{
     Ident, Token, bracketed,
     parse::{Parse, ParseStream},
@@ -43,32 +44,23 @@ impl Component {
     }
 
     pub(crate) fn write(&self, writer: &mut ViewWriter) {
-        match self {
-            Self::Normal {
-                opening_tag,
-                children,
-                closing_tag,
-            } => {
-                writer.push_str("<");
-                writer.push_str(&opening_tag.name.to_string());
-                opening_tag.attributes.write(writer);
-                writer.push_str(">");
-
-                for child in children {
-                    child.write(writer);
-                }
-
-                writer.push_str("</");
-                writer.push_str(&closing_tag.name.to_string());
-                writer.push_str(">");
-            }
-            Self::SelfClosing { tag } => {
-                writer.push_str("<");
-                writer.push_str(&tag.name.to_string());
-                tag.attributes.write(writer);
-                writer.push_str("/>");
-            }
+        let name = self.name();
+        let fields = self.attributes().items.iter().map(|item| {
+            let name = &item.name;
+            let value = &item.value;
+            quote! { #name: #value }
+        });
+        let mut child_writer = ViewWriter::new();
+        for child in self.children() {
+            child.write(&mut child_writer);
         }
+
+        writer.push_expr(quote! {
+            <#name as ::topcoat::component::Component>::render(#name {
+                child: #child_writer,
+                #(#fields),*
+            }).await
+        });
     }
 }
 
