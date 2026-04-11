@@ -16,6 +16,15 @@ async fn main() {
                 <title>"hello world"</title>
             </head>
             <body id="test">
+                <form
+                    action=async || {
+                        // runs on server
+                        println!("{}, {}", email, password);
+                    }
+                >
+                    <input name="email" />
+                    <input name="password" />
+                </form>
             </body>
         </html>
     };
