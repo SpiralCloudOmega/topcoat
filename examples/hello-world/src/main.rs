@@ -9,15 +9,13 @@ async fn button<'a>(id: &'a str, child: View) -> View {
 
 #[tokio::main]
 async fn main() {
+    let router = topcoat::router::Router::new();
     let content = view! {
         <html>
             <head>
                 <title>"hello world"</title>
             </head>
             <body id="test">
-                [button id="5"]
-                    "click me"
-                [/button]
             </body>
         </html>
     };

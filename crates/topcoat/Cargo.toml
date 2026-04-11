@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 topcoat-macro.workspace = true
+topcoat-router.workspace = true
 topcoat-view.workspace = true
 
 [lints]
