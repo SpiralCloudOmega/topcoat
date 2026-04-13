@@ -1,5 +1,6 @@
 use clap::Args;
-use indicatif::ProgressBar;
+use console::style;
+use indicatif::{ProgressBar, ProgressStyle};
 use notify::{RecursiveMode, Watcher, recommended_watcher};
 use std::process::Stdio;
 use tokio::process::{Child, Command};
@@ -11,7 +12,16 @@ pub struct DevCommand {}
 
 impl DevCommand {
     pub async fn run(self) {
-        let mut child = build_and_run().await;
+        eprintln!();
+        eprintln!(
+            "  {} {}",
+            style("topcoat").cyan().bold(),
+            style("dev server").dim()
+        );
+        eprintln!("  {}", style("watching ./src for changes").dim());
+        eprintln!();
+
+        let mut child = build_and_run(true).await;
 
         let (tx, mut rx) = mpsc::channel::<notify::Result<notify::Event>>(16);
         let mut watcher = recommended_watcher(move |event| {
@@ -28,42 +38,51 @@ impl DevCommand {
         loop {
             tokio::select! {
                 _ = tokio::signal::ctrl_c() => {
-                    eprintln!("\nShutting down...");
+                    eprintln!();
+                    eprintln!("  {}", style("shutting down...").dim());
+                    eprintln!();
                     if let Some(c) = &mut child {
                         kill_child(c).await;
                     }
                     break;
                 }
                 Some(_event) = rx.recv() => {
-                    // Drain any extra queued events
                     while rx.try_recv().is_ok() {}
 
                     if last_rebuild.elapsed() < debounce {
                         continue;
                     }
 
-                    // Debounce: wait a short period to batch rapid saves
                     tokio::time::sleep(debounce).await;
-                    // Drain events accumulated during the debounce sleep
                     while rx.try_recv().is_ok() {}
 
                     last_rebuild = Instant::now();
                     if let Some(c) = &mut child {
                         kill_child(c).await;
                     }
-                    child = build_and_run().await;
+                    child = build_and_run(false).await;
                 }
             }
         }
     }
 }
 
-/// Builds the project silently with a spinner, then runs the binary directly.
-/// Returns `None` if the build failed (errors are printed to stderr).
-async fn build_and_run() -> Option<Child> {
+fn make_spinner(message: &str) -> ProgressBar {
     let spinner = ProgressBar::new_spinner();
-    spinner.set_message("Building...");
+    spinner.set_style(
+        ProgressStyle::default_spinner()
+            .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
+            .template("  {spinner:.cyan} {msg}")
+            .unwrap(),
+    );
+    spinner.set_message(message.to_string());
     spinner.enable_steady_tick(Duration::from_millis(80));
+    spinner
+}
+
+async fn build_and_run(initial: bool) -> Option<Child> {
+    let label = if initial { "Building" } else { "Rebuilding" };
+    let spinner = make_spinner(label);
 
     let output = Command::new("cargo")
         .args(["build", "--message-format=json-diagnostic-rendered-ansi"])
@@ -77,7 +96,6 @@ async fn build_and_run() -> Option<Child> {
 
     spinner.finish_and_clear();
 
-    // Parse cargo's JSON messages
     let stdout = String::from_utf8_lossy(&output.stdout);
     let messages: Vec<serde_json::Value> = stdout
         .lines()
@@ -85,7 +103,9 @@ async fn build_and_run() -> Option<Child> {
         .collect();
 
     if !output.status.success() {
-        // Print rendered compiler diagnostics
+        eprintln!("  {}", style("build failed").red().bold());
+        eprintln!();
+
         for msg in &messages {
             if let Some(rendered) = msg
                 .get("message")
@@ -95,13 +115,15 @@ async fn build_and_run() -> Option<Child> {
                 eprint!("{rendered}");
             }
         }
+
+        eprintln!();
+        eprintln!("  {}", style("waiting for changes...").dim());
+        eprintln!();
         return None;
     }
 
     let executable = messages.iter().find_map(|msg| {
-        if msg.get("reason")?.as_str()? == "compiler-artifact"
-            && msg.get("executable").is_some()
-        {
+        if msg.get("reason")?.as_str()? == "compiler-artifact" && msg.get("executable").is_some() {
             msg["executable"].as_str().map(String::from)
         } else {
             None
@@ -109,9 +131,12 @@ async fn build_and_run() -> Option<Child> {
     });
 
     let Some(exe) = executable else {
-        eprintln!("Could not determine executable path from cargo build output");
+        eprintln!("  {}", style("could not determine executable path").red());
         return None;
     };
+
+    eprintln!("  {}", style("ready").green().bold());
+    eprintln!();
 
     Some(
         Command::new(exe)

@@ -27,7 +27,7 @@ async fn layout(slot: Slot) -> View {
 
 #[page("/")]
 async fn home_page() -> View {
-    view! { "home" }
+    view! { "kek" }
 }
 
 #[page("/about")]
