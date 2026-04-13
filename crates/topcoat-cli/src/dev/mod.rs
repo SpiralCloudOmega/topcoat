@@ -5,7 +5,6 @@ use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
 use notify::{RecursiveMode, Watcher, recommended_watcher};
 use std::process::Stdio;
-use tokio::net::TcpListener;
 use tokio::process::{Child, Command};
 use tokio::sync::mpsc;
 use tokio::time::{Duration, Instant};
@@ -15,9 +14,7 @@ pub struct DevCommand {}
 
 impl DevCommand {
     pub async fn run(self) {
-        let listener = TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("failed to open dev server port");
+        let listener = broadcast_server::bind().await;
         let dev_url = format!("ws://{}", listener.local_addr().unwrap());
         tokio::spawn(broadcast_server::run(listener));
 

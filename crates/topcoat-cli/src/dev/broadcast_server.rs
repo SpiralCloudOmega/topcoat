@@ -4,6 +4,23 @@ use tokio::net::TcpListener;
 use tokio::sync::broadcast;
 use tokio_tungstenite::tungstenite::Message;
 
+const PORT_START: u16 = 59039;
+const PORT_RANGE: u16 = 100;
+
+/// Bind the dev server to a stable port, starting at [`PORT_START`] and
+/// incrementing if occupied.
+pub async fn bind() -> TcpListener {
+    for port in PORT_START..=PORT_START.saturating_add(PORT_RANGE) {
+        if let Ok(listener) = TcpListener::bind(("127.0.0.1", port)).await {
+            return listener;
+        }
+    }
+    panic!(
+        "failed to bind dev server port ({PORT_START}–{})",
+        PORT_START + PORT_RANGE
+    );
+}
+
 /// Run the WebSocket broadcast server.
 ///
 /// Accepts connections on the given listener. When any client sends `"ready"`,
