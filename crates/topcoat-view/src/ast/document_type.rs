@@ -22,7 +22,7 @@ pub struct DocumentType {
 
 impl DocumentType {
     pub(crate) fn write(&self, writer: &mut ViewWriter) {
-        writer.push_str_unescaped("<!DOCTYPE html>");
+        writer.write_str_unescaped("<!DOCTYPE html>");
     }
 }
 

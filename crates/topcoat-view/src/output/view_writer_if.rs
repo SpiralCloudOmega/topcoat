@@ -37,7 +37,7 @@ impl<'a> ViewWriterIf<'a> {
         self.flush();
         let cond = self.cond;
         let body = &self.writer.tokens;
-        parent.push_raw(quote! { if #cond { #body } });
+        parent.write_raw(quote! { if #cond { #body } });
         parent
     }
 }
@@ -98,7 +98,7 @@ impl Drop for ViewWriterElse<'_> {
     fn drop(&mut self) {
         self.flush();
         let tokens = &self.writer.tokens;
-        self.parent.push_raw(quote! { else { #tokens } });
+        self.parent.write_raw(quote! { else { #tokens } });
         // The capacity needed for an if-else is the shortest of the two.
         self.parent.capacity += self.if_capacity.min(self.writer.capacity);
     }

@@ -17,10 +17,10 @@ pub struct Attribute {
 impl Attribute {
     pub(crate) fn write(&self, writer: &mut ViewWriter) {
         let name = self.name.to_string();
-        writer.push_str_unescaped(&name);
-        writer.push_str_unescaped("=\"");
+        writer.write_str_unescaped(&name);
+        writer.write_str_unescaped("=\"");
         self.value.write(writer);
-        writer.push_str_unescaped("\"");
+        writer.write_str_unescaped("\"");
     }
 }
 
@@ -48,8 +48,8 @@ pub enum AttributeValue {
 impl AttributeValue {
     pub(crate) fn write(&self, writer: &mut ViewWriter) {
         match self {
-            Self::Expr { expr, .. } => writer.push_expr(expr.to_token_stream()),
-            Self::LitStr(inner) => writer.push_str(&inner.value()),
+            Self::Expr { expr, .. } => writer.write_expr(expr.to_token_stream()),
+            Self::LitStr(inner) => writer.write_str(&inner.value()),
         }
     }
 }
@@ -87,7 +87,7 @@ pub struct Attributes {
 impl Attributes {
     pub(crate) fn write(&self, writer: &mut ViewWriter) {
         for item in &self.items {
-            writer.push_str_unescaped(" ");
+            writer.write_str_unescaped(" ");
             item.write(writer);
         }
     }

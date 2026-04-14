@@ -30,7 +30,7 @@ pub enum Node {
 impl Node {
     pub(crate) fn write(&self, writer: &mut ViewWriter) {
         match self {
-            Self::Text(inner) => writer.push_str(&inner.value()),
+            Self::Text(inner) => writer.write_str(&inner.value()),
             Self::DocumentType(inner) => inner.write(writer),
             Self::Element(inner) => inner.write(writer),
             Self::Component(inner) => inner.write(writer),

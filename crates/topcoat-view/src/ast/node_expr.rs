@@ -1,4 +1,4 @@
-use quote::quote;
+use quote::ToTokens;
 use syn::{
     parenthesized,
     parse::{Parse, ParseStream},
@@ -14,7 +14,7 @@ pub struct NodeExpr {
 impl NodeExpr {
     pub(crate) fn write(&self, writer: &mut ViewWriter) {
         let expr = &self.expr;
-        writer.push_expr(quote! { &#expr });
+        writer.write_expr(expr.to_token_stream());
     }
 }
 

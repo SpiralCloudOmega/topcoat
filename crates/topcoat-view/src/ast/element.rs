@@ -66,35 +66,35 @@ impl Element {
                     Ident::new(&format!("__element_name_{}", increment), Span::call_site())
                 });
 
-                writer.push_raw(quote! {});
+                writer.write_raw(quote! {});
 
-                writer.push_str_unescaped("<");
+                writer.write_str_unescaped("<");
                 match (name_ident.as_ref(), name_expr) {
                     (Some(ident), Some(expr)) => {
-                        writer.push_raw(quote! { let #ident = &#expr;  });
-                        writer.push_expr(quote! { #ident });
+                        writer.write_raw(quote! { let #ident = &#expr;  });
+                        writer.write_expr(quote! { #ident });
                     }
                     _ => opening_tag.name.write(writer),
                 }
                 opening_tag.attributes.write(writer);
-                writer.push_str_unescaped(">");
+                writer.write_str_unescaped(">");
 
                 for child in children {
                     child.write(writer);
                 }
 
-                writer.push_str_unescaped("</");
+                writer.write_str_unescaped("</");
                 match name_ident {
-                    Some(ident) => writer.push_expr(quote! { #ident }),
+                    Some(ident) => writer.write_expr(quote! { #ident }),
                     _ => opening_tag.name.write(writer),
                 }
-                writer.push_str_unescaped(">");
+                writer.write_str_unescaped(">");
             }
             Self::Void { tag } => {
-                writer.push_str_unescaped("<");
+                writer.write_str_unescaped("<");
                 tag.name.write(writer);
                 tag.attributes.write(writer);
-                writer.push_str_unescaped(">");
+                writer.write_str_unescaped(">");
             }
         }
     }
@@ -169,9 +169,9 @@ impl ElementName {
 
     pub(crate) fn write(&self, writer: &mut ViewWriter) {
         match self {
-            Self::Ident(inner) => writer.push_str_unescaped(&inner.to_string()),
-            Self::LitStr(inner) => writer.push_str_unescaped(&inner.value()),
-            Self::Expr { expr, .. } => writer.push_expr(quote! { #expr }),
+            Self::Ident(inner) => writer.write_str_unescaped(&inner.to_string()),
+            Self::LitStr(inner) => writer.write_str_unescaped(&inner.value()),
+            Self::Expr { expr, .. } => writer.write_expr(quote! { #expr }),
         }
     }
 

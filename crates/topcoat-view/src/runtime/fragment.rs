@@ -15,7 +15,7 @@ pub trait Fragment {
 
 impl<T> Fragment for T
 where
-    T: AsRef<str>,
+    T: AsRef<str> + ?Sized,
 {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) {
@@ -28,27 +28,16 @@ where
     }
 }
 
-impl Fragment for &View {
+impl Fragment for View {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) {
-        f.write_str(&self.buf)
+        // Views are guaranteed to already be escaped.
+        self.fmt_unescaped(f);
     }
 
     #[inline]
     fn fmt_unescaped(&self, f: &mut Formatter<'_>) {
         f.write_str_unescaped(&self.buf)
-    }
-}
-
-impl Fragment for View {
-    #[inline]
-    fn fmt(&self, f: &mut Formatter<'_>) {
-        <&View as Fragment>::fmt(&self, f)
-    }
-
-    #[inline]
-    fn fmt_unescaped(&self, f: &mut Formatter<'_>) {
-        <&View as Fragment>::fmt_unescaped(&self, f)
     }
 }
 

@@ -51,6 +51,6 @@ impl Drop for ViewWriterForLoop<'_> {
         let pat = self.pat;
         let expr = self.expr;
         self.parent
-            .push_raw(quote! { for #pat in #expr { #tokens } });
+            .write_raw(quote! { for #pat in #expr { #tokens } });
     }
 }

@@ -85,7 +85,7 @@ impl<'a> Formatter<'a> {
     /// Writes a string without escaping. Use for trusted markup like tags and attributes.
     #[inline]
     pub fn write_str_unescaped(&mut self, s: &str) {
-        self.buf.write_str(s);
+        self.buf.push_str(s);
     }
 }
 

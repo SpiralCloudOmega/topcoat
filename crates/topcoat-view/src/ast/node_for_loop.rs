@@ -51,7 +51,7 @@ impl NodeContinue {
     pub(crate) fn write(&self, writer: &mut ViewWriter) {
         let expr_continue = &self.expr_continue;
         let semi_token = &self.semi_token;
-        writer.push_raw(quote! { #expr_continue #semi_token });
+        writer.write_raw(quote! { #expr_continue #semi_token });
     }
 }
 
@@ -79,7 +79,7 @@ impl NodeBreak {
     pub(crate) fn write(&self, writer: &mut ViewWriter) {
         let expr_break = &self.expr_break;
         let semi_token = &self.semi_token;
-        writer.push_raw(quote! { #expr_break #semi_token });
+        writer.write_raw(quote! { #expr_break #semi_token });
     }
 }
 
