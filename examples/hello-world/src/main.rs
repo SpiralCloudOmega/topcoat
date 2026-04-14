@@ -1,4 +1,7 @@
-use topcoat::{View, layout, page, router::layout::Slot, view};
+use topcoat::{
+    router::{layout, layout::Slot, page},
+    view::{View, view},
+};
 
 #[layout]
 async fn layout(slot: Slot) -> View {

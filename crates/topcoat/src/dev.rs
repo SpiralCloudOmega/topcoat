@@ -1,7 +1,10 @@
 use futures_util::SinkExt;
 use tokio_tungstenite::tungstenite::Message;
 
-use crate::{View, component, view};
+use crate::{
+    component::component,
+    view::{View, view},
+};
 
 /// Notify the topcoat dev server that the application is ready.
 ///
@@ -28,7 +31,7 @@ pub async fn script(child: View) -> View {
 
     view! {
         <script>
-            (crate::Escaped::new_unchecked(format!(r#"
+            (crate::view::Escaped::new_unchecked(format!(r#"
 (function() {{
   function connect() {{
     var ws = new WebSocket("{url}");

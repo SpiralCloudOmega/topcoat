@@ -23,7 +23,7 @@ impl ViewWriter {
     fn flush(&mut self) {
         if !self.static_segment.is_empty() {
             let static_segment = &self.static_segment;
-            quote! { ::topcoat::Fragment::fmt_unescaped(#static_segment, &mut __f); }
+            quote! { ::topcoat::view::Fragment::fmt_unescaped(#static_segment, &mut __f); }
                 .to_tokens(&mut self.tokens);
             self.capacity += self.static_segment.len();
             self.static_segment.clear();
@@ -40,13 +40,13 @@ impl ViewWriter {
 
     pub fn write_expr_unescaped(&mut self, expr: TokenStream) {
         self.flush();
-        quote! { ::topcoat::Fragment::fmt_unescaped(&#expr, &mut __f); }
+        quote! { ::topcoat::view::Fragment::fmt_unescaped(&#expr, &mut __f); }
             .to_tokens(&mut self.tokens);
     }
 
     pub fn write_expr(&mut self, expr: TokenStream) {
         self.flush();
-        quote! { ::topcoat::Fragment::fmt(&#expr, &mut __f); }.to_tokens(&mut self.tokens);
+        quote! { ::topcoat::view::Fragment::fmt(&#expr, &mut __f); }.to_tokens(&mut self.tokens);
     }
 
     pub fn write_raw(&mut self, tokens: TokenStream) {
@@ -60,21 +60,21 @@ impl ToTokens for ViewWriter {
 
         // Optimized path: The view has no dynamic content. We can construct it as a &'static str.
         if self.tokens.is_empty() {
-            quote! { ::topcoat::View::new(#static_segment) }.to_tokens(tokens);
+            quote! { ::topcoat::view::View::new(#static_segment) }.to_tokens(tokens);
             return;
         }
 
         let buffer = &self.tokens;
         let capacity = self.capacity + static_segment.len();
         let final_segment = (!static_segment.is_empty()).then(|| {
-            quote! { ::topcoat::Fragment::fmt_unescaped(#static_segment, &mut __f); }
+            quote! { ::topcoat::view::Fragment::fmt_unescaped(#static_segment, &mut __f); }
         });
         quote! {{
             let mut __buf = ::std::string::String::with_capacity(#capacity);
-            let mut __f = ::topcoat::Formatter::new(&mut __buf);
+            let mut __f = ::topcoat::view::Formatter::new(&mut __buf);
             #buffer
             #final_segment
-            ::topcoat::View::new(__buf)
+            ::topcoat::view::View::new(__buf)
         }}
         .to_tokens(tokens);
     }
