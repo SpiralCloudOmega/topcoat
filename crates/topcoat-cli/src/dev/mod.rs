@@ -4,6 +4,7 @@ use clap::Args;
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
 use notify::{RecursiveMode, Watcher, recommended_watcher};
+use std::path::PathBuf;
 use std::process::Stdio;
 use tokio::process::{Child, Command};
 use tokio::sync::mpsc;
@@ -24,7 +25,8 @@ impl DevCommand {
             style("topcoat").cyan().bold(),
             style("dev server").dim()
         );
-        eprintln!("  {}", style("watching ./src for changes").dim());
+        let watch_dirs = discover_watch_dirs().await;
+        eprintln!("  {}", style("watching for file changes...").dim());
         eprintln!();
 
         let mut child = build_and_run(true, &dev_url).await;
@@ -34,9 +36,16 @@ impl DevCommand {
             let _ = tx.blocking_send(event);
         })
         .expect("failed to create file watcher");
-        watcher
-            .watch(std::path::Path::new("./src"), RecursiveMode::Recursive)
-            .expect("failed to watch ./src directory");
+        for dir in &watch_dirs {
+            watcher
+                .watch(dir, RecursiveMode::Recursive)
+                .unwrap_or_else(|e| {
+                    eprintln!(
+                        "  {}",
+                        style(format!("failed to watch {}: {e}", dir.display())).yellow()
+                    )
+                });
+        }
 
         let debounce = Duration::from_millis(200);
         let mut last_rebuild = Instant::now();
@@ -72,6 +81,41 @@ impl DevCommand {
                 }
             }
         }
+    }
+}
+
+async fn discover_watch_dirs() -> Vec<PathBuf> {
+    let output = Command::new("cargo")
+        .args(["metadata", "--no-deps", "--format-version", "1"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .await
+        .expect("failed to run cargo metadata");
+
+    if !output.status.success() {
+        eprintln!("  cargo metadata failed, falling back to ./src");
+        return vec![PathBuf::from("./src")];
+    }
+
+    let meta: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("failed to parse cargo metadata");
+
+    let dirs: Vec<PathBuf> = meta["packages"]
+        .as_array()
+        .unwrap_or(&vec![])
+        .iter()
+        .filter_map(|pkg| {
+            let manifest = PathBuf::from(pkg["manifest_path"].as_str()?);
+            let src = manifest.parent()?.join("src");
+            src.is_dir().then_some(src)
+        })
+        .collect();
+
+    if dirs.is_empty() {
+        vec![PathBuf::from("./src")]
+    } else {
+        dirs
     }
 }
 
