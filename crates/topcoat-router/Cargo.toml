@@ -12,6 +12,7 @@ topcoat-view.workspace = true
 axum.workspace = true
 http.workspace = true
 inventory = { workspace = true, optional = true }
+ref-cast.workspace = true
 thiserror.workspace = true
 
 [lints]
