@@ -10,7 +10,7 @@ Built on top of [Axum](https://github.com/tokio-rs/axum).
 
 ## Features
 
-- **File-based router** — routes are derived from your file structure, no registration boilerplate; or register routes manually with `router.page(...).layout(...)` if you prefer
+- **Optional file-based router** — routes are derived from your file structure, no registration boilerplate; or register routes manually if you prefer
 - **`view!` macro** — write HTML that looks like HTML, with Rust control flow (`if`, `match`, `for`, `let`)
 - **No surprising HTML** — void elements stay void, no self-closing components, no camelCase attributes
 - **Layouts** — wrap pages in shared layouts via a `Slot` composition model
@@ -116,6 +116,41 @@ Routes are derived automatically from your file structure. The rules are:
 | `app/_group/mod.rs` | *(group root, no route)* |
 
 Directories prefixed with `_` are **groups** — they organize files without adding a path segment.
+
+## Manual routing
+
+If you prefer not to use the file router, you can register pages and layouts explicitly. Annotate each function with an explicit path and register them on the router directly:
+
+```rust
+use topcoat::{
+    router::{Router, Slot, layout, page},
+    view::{View, view},
+};
+
+#[layout("/")]
+async fn root_layout(slot: Slot) -> View {
+    view! {
+        <html><body>(slot.await)</body></html>
+    }
+}
+
+#[page("/")]
+async fn home_page() -> View {
+    view! { "home" }
+}
+
+#[page("/about")]
+async fn about_page() -> View {
+    view! { "about" }
+}
+
+pub fn router() -> Router {
+    Router::new()
+        .layout(root_layout)
+        .page(home_page)
+        .page(about_page)
+}
+```
 
 ## The `view!` macro
 
