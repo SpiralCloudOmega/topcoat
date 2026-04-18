@@ -250,3 +250,4 @@ Topcoat is built on top of Axum, adding file-based routing, server-side templati
 - **Request hooks** — a request context that allows defining hooks like `use_auth()` which fetch data on demand (e.g. the current user from the database) and can be called from any component without threading the value down through every layer of the tree
 - **Partial page re-rendering** — leverage HTMX to swap only the content that changed during navigation, so shared elements like the nav bar are not re-fetched or re-rendered on every page transition
 - **Strong security model** — safe defaults with no surprises; things like CSRF protection, output escaping, and secure session handling should work correctly out of the box without requiring explicit opt-in
+- **`view!` formatter** — source code formatting for the `view!` macro via `topcoat fmt`
