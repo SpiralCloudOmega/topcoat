@@ -119,7 +119,7 @@ Directories prefixed with `_` are **groups** — they organize files without add
 
 ## The `view!` macro
 
-The `view!` macro generates HTML that closely mirrors real HTML syntax. Unlike JSX or Leptos's `view!`, there are no surprises:
+The `view!` macro is a templating system that aims to be close to real HTML with no surprises:
 
 - Elements use their real HTML names
 - Void elements (`<hr>`, `<br>`, `<input>`, etc.) do not need a closing tag
