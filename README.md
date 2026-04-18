@@ -8,8 +8,6 @@ Topcoat takes the opposite bet from Leptos and Dioxus: instead of running Rust i
 
 Built on top of [Axum](https://github.com/tokio-rs/axum).
 
----
-
 ## Features
 
 - **File-based router** — routes are derived from your file structure, no registration boilerplate; or register routes manually with `router.page(...).layout(...)` if you prefer
@@ -19,8 +17,6 @@ Built on top of [Axum](https://github.com/tokio-rs/axum).
 - **Components** — reusable async functions that return `View`
 - **Dev server** — `topcoat dev` watches for changes and hot-reloads the browser
 - **Axum compatible** — you can drop down to raw Axum when needed
-
----
 
 ## Quick start
 
@@ -106,8 +102,6 @@ async fn about_page() -> View {
 }
 ```
 
----
-
 ## File-based routing
 
 Routes are derived automatically from your file structure. The rules are:
@@ -122,8 +116,6 @@ Routes are derived automatically from your file structure. The rules are:
 | `app/_group/mod.rs` | *(group root, no route)* |
 
 Directories prefixed with `_` are **groups** — they organize files without adding a path segment.
-
----
 
 ## The `view!` macro
 
@@ -158,8 +150,6 @@ view! {
 }
 ```
 
----
-
 ## Components
 
 Components are async functions annotated with `#[component]`. They receive typed parameters including child `View`s.
@@ -185,8 +175,6 @@ view! {
 }
 ```
 
----
-
 ## Layouts
 
 A `#[layout]` wraps all pages found in the same directory (and subdirectories). It receives a `Slot` — a future that resolves to the page's `View`.
@@ -204,8 +192,6 @@ async fn layout(slot: Slot) -> View {
 }
 ```
 
----
-
 ## Dev server
 
 ```sh
@@ -216,13 +202,9 @@ cargo topcoat dev
 
 Topcoat watches your source files, rebuilds on changes, and sends a reload signal to the browser. The `[topcoat::dev::script /]` component in your layout handles the client side — it's a no-op in production.
 
----
-
 ## Architecture
 
 Topcoat is built on top of Axum, adding file-based routing, server-side templating, and a component model on top of Axum's solid HTTP foundation. `topcoat::router::Router` is convertible to `axum::Router` if you need to drop down to raw Axum.
-
----
 
 ## Planned
 
