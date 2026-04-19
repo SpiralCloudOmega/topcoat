@@ -14,7 +14,11 @@ pub struct Path {
 
 impl Path {
     pub fn new<S: AsRef<str> + ?Sized>(s: &S) -> &Self {
-        Self::ref_cast(s.as_ref())
+        let s = s.as_ref();
+        if s == "/" {
+            return Self::ref_cast("");
+        }
+        Self::ref_cast(s)
     }
 
     pub fn segments(&self) -> impl Iterator<Item = PathSegment<'_>> {
@@ -243,6 +247,128 @@ impl Display for PathSegment<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── Path ──
+
+    #[test]
+    fn path_root_slash_normalized() {
+        let path = Path::new("/");
+        assert_eq!(&path.inner, "");
+        assert_eq!(path.to_axum_path(), "/");
+        assert_eq!(path.segments().count(), 0);
+    }
+
+    #[test]
+    fn path_segments() {
+        let path = Path::new("/dashboard/{id}/(auth)");
+        let segs: Vec<_> = path.segments().collect();
+        assert_eq!(
+            segs,
+            vec![
+                PathSegment::Static("dashboard"),
+                PathSegment::Param("id"),
+                PathSegment::Group("auth"),
+            ]
+        );
+    }
+
+    #[test]
+    fn path_single_segment() {
+        let path = Path::new("/home");
+        let segs: Vec<_> = path.segments().collect();
+        assert_eq!(segs, vec![PathSegment::Static("home")]);
+    }
+
+    #[test]
+    fn path_to_axum_strips_groups() {
+        let path = Path::new("/(auth)/dashboard/{id}");
+        assert_eq!(path.to_axum_path(), "/dashboard/{id}");
+    }
+
+    #[test]
+    fn path_to_axum_empty() {
+        let path = Path::new("");
+        assert_eq!(path.to_axum_path(), "/");
+    }
+
+    #[test]
+    fn path_to_axum_no_groups() {
+        let path = Path::new("/users/{id}");
+        assert_eq!(path.to_axum_path(), "/users/{id}");
+    }
+
+    #[test]
+    fn path_starts_with_match() {
+        let path = Path::new("/users/{id}/posts");
+        let prefix = Path::new("/users/{id}");
+        assert!(path.starts_with(prefix));
+    }
+
+    #[test]
+    fn path_starts_with_no_match() {
+        let path = Path::new("/users/{id}");
+        let prefix = Path::new("/posts/{id}");
+        assert!(!path.starts_with(prefix));
+    }
+
+    #[test]
+    fn path_starts_with_longer_prefix() {
+        let path = Path::new("/users");
+        let prefix = Path::new("/users/{id}/posts");
+        assert!(!path.starts_with(prefix));
+    }
+
+    #[test]
+    fn path_display() {
+        let path = Path::new("/users/{id}");
+        assert_eq!(path.to_string(), "/users/{id}");
+    }
+
+    // ── PathBuf ──
+
+    #[test]
+    fn pathbuf_new_is_empty() {
+        let buf = PathBuf::new();
+        assert_eq!(buf.to_string(), "");
+    }
+
+    #[test]
+    fn pathbuf_add_assign() {
+        let mut buf = PathBuf::new();
+        buf += PathSegment::Static("users");
+        buf += PathSegment::Param("id");
+        assert_eq!(buf.to_string(), "/users/{id}");
+    }
+
+    #[test]
+    fn pathbuf_from_iterator() {
+        let buf: PathBuf = vec![
+            PathSegment::Static("api"),
+            PathSegment::Static("v1"),
+            PathSegment::Param("resource"),
+        ]
+        .into_iter()
+        .collect();
+        assert_eq!(buf.to_string(), "/api/v1/{resource}");
+    }
+
+    #[test]
+    fn pathbuf_deref_to_path() {
+        let mut buf = PathBuf::new();
+        buf += PathSegment::Static("users");
+        let path: &Path = &buf;
+        let segs: Vec<_> = path.segments().collect();
+        assert_eq!(segs, vec![PathSegment::Static("users")]);
+    }
+
+    #[test]
+    fn pathbuf_to_owned_roundtrip() {
+        let path = Path::new("/users/{id}");
+        let buf = path.to_owned();
+        assert_eq!(&*buf, path);
+    }
+
+    // ── PathSegment ──
 
     #[test]
     fn static_segment() {
