@@ -119,3 +119,257 @@ impl From<FileRouter> for Router {
         value.inner
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::borrow::Cow;
+
+    use topcoat_view::runtime::View;
+
+    use super::*;
+
+    fn router(root: &'static str) -> FileRouter {
+        FileRouter::new(root)
+    }
+
+    fn seg(file: &'static str, kind: Option<SegmentKind>, rename: Option<&'static str>) -> Segment {
+        Segment::new(file, kind, rename.map(Cow::Borrowed))
+    }
+
+    // ── strip_module_suffix ──────────────────────────────────────────
+
+    #[test]
+    fn strip_rs_extension() {
+        assert_eq!(
+            FileRouter::strip_module_suffix("src/app/about.rs"),
+            "src/app/about"
+        );
+    }
+
+    #[test]
+    fn strip_mod_rs() {
+        assert_eq!(FileRouter::strip_module_suffix("src/app/mod.rs"), "src/app");
+    }
+
+    #[test]
+    fn strip_mod_unix() {
+        assert_eq!(FileRouter::strip_module_suffix("src/app/mod"), "src/app");
+    }
+
+    #[test]
+    fn strip_mod_windows() {
+        assert_eq!(FileRouter::strip_module_suffix("src\\app\\mod"), "src\\app");
+    }
+
+    #[test]
+    fn strip_no_suffix() {
+        assert_eq!(FileRouter::strip_module_suffix("src/app"), "src/app");
+    }
+
+    // ── file_to_path: basic static routes ────────────────────────────
+
+    #[test]
+    fn root_page() {
+        let r = router("src/app/mod.rs");
+        assert_eq!(r.file_to_path("src/app/mod.rs").to_string(), "");
+    }
+
+    #[test]
+    fn simple_page() {
+        let r = router("src/app/mod.rs");
+        assert_eq!(r.file_to_path("src/app/about.rs").to_string(), "/about");
+    }
+
+    #[test]
+    fn nested_page() {
+        let r = router("src/app/mod.rs");
+        assert_eq!(
+            r.file_to_path("src/app/settings/profile.rs").to_string(),
+            "/settings/profile"
+        );
+    }
+
+    #[test]
+    fn nested_mod() {
+        let r = router("src/app/mod.rs");
+        assert_eq!(
+            r.file_to_path("src/app/settings/mod.rs").to_string(),
+            "/settings"
+        );
+    }
+
+    // ── file_to_path: kebab-case conversion ──────────────────────────
+
+    #[test]
+    fn static_segment_is_kebab_cased() {
+        let r = router("src/app/mod.rs");
+        assert_eq!(r.file_to_path("src/app/my_page.rs").to_string(), "/my-page");
+    }
+
+    #[test]
+    fn nested_static_segments_are_kebab_cased() {
+        let r = router("src/app/mod.rs");
+        assert_eq!(
+            r.file_to_path("src/app/user_settings/change_password.rs")
+                .to_string(),
+            "/user-settings/change-password"
+        );
+    }
+
+    // ── file_to_path: group segments (underscore prefix) ─────────────
+
+    #[test]
+    fn group_segment() {
+        let r = router("src/app/mod.rs");
+        assert_eq!(
+            r.file_to_path("src/app/_group/contact.rs").to_string(),
+            "/(_group)/contact"
+        );
+    }
+
+    #[test]
+    fn group_mod() {
+        let r = router("src/app/mod.rs");
+        assert_eq!(
+            r.file_to_path("src/app/_group/mod.rs").to_string(),
+            "/(_group)"
+        );
+    }
+
+    #[test]
+    fn nested_groups() {
+        let r = router("src/app/mod.rs");
+        assert_eq!(
+            r.file_to_path("src/app/_auth/_admin/dashboard.rs")
+                .to_string(),
+            "/(_auth)/(_admin)/dashboard"
+        );
+    }
+
+    // ── file_to_path: segment overrides ──────────────────────────────
+
+    #[test]
+    fn override_static_to_param() {
+        let r = router("src/app/mod.rs").segment(seg(
+            "src/app/user_id.rs",
+            Some(SegmentKind::Param),
+            None,
+        ));
+        assert_eq!(
+            r.file_to_path("src/app/user_id.rs").to_string(),
+            "/{user_id}"
+        );
+    }
+
+    #[test]
+    fn override_static_to_catch_all() {
+        let r = router("src/app/mod.rs").segment(seg(
+            "src/app/rest.rs",
+            Some(SegmentKind::CatchAll),
+            None,
+        ));
+        assert_eq!(r.file_to_path("src/app/rest.rs").to_string(), "/{*rest}");
+    }
+
+    #[test]
+    fn override_group_to_static() {
+        let r = router("src/app/mod.rs").segment(seg(
+            "src/app/_internal/mod.rs",
+            Some(SegmentKind::Static),
+            None,
+        ));
+        // Overridden to static, so kebab-case is applied to the "_internal" name.
+        assert_eq!(
+            r.file_to_path("src/app/_internal/page.rs").to_string(),
+            "/internal/page"
+        );
+    }
+
+    #[test]
+    fn rename_segment() {
+        let r = router("src/app/mod.rs").segment(seg("src/app/blog_post.rs", None, Some("posts")));
+        assert_eq!(r.file_to_path("src/app/blog_post.rs").to_string(), "/posts");
+    }
+
+    #[test]
+    fn rename_and_kind_override() {
+        let r = router("src/app/mod.rs").segment(seg(
+            "src/app/slug.rs",
+            Some(SegmentKind::Param),
+            Some("id"),
+        ));
+        assert_eq!(r.file_to_path("src/app/slug.rs").to_string(), "/{id}");
+    }
+
+    #[test]
+    fn param_in_nested_path() {
+        let r = router("src/app/mod.rs").segment(seg(
+            "src/app/users/id/mod.rs",
+            Some(SegmentKind::Param),
+            None,
+        ));
+        assert_eq!(
+            r.file_to_path("src/app/users/id/mod.rs").to_string(),
+            "/users/{id}"
+        );
+        assert_eq!(
+            r.file_to_path("src/app/users/id/settings.rs").to_string(),
+            "/users/{id}/settings"
+        );
+    }
+
+    #[test]
+    fn catch_all_nested() {
+        let r = router("src/app/mod.rs").segment(seg(
+            "src/app/docs/path/mod.rs",
+            Some(SegmentKind::CatchAll),
+            None,
+        ));
+        assert_eq!(
+            r.file_to_path("src/app/docs/path/mod.rs").to_string(),
+            "/docs/{*path}"
+        );
+    }
+
+    // ── file_to_path: multiple segment overrides ─────────────────────
+
+    #[test]
+    fn multiple_segments() {
+        let r = router("src/app/mod.rs")
+            .segment(seg(
+                "src/app/users/id/mod.rs",
+                Some(SegmentKind::Param),
+                None,
+            ))
+            .segment(seg(
+                "src/app/users/id/posts/post_id.rs",
+                Some(SegmentKind::Param),
+                None,
+            ));
+        assert_eq!(
+            r.file_to_path("src/app/users/id/posts/post_id.rs")
+                .to_string(),
+            "/users/{id}/posts/{post_id}"
+        );
+    }
+
+    // ── file_to_path: windows-style paths ────────────────────────────
+
+    #[test]
+    fn windows_separator() {
+        let r = router("src\\app\\mod.rs");
+        assert_eq!(r.file_to_path("src\\app\\about.rs").to_string(), "/about");
+    }
+
+    // ── segment ordering assertion ───────────────────────────────────
+
+    #[test]
+    #[should_panic(expected = "`segment` must be called before registering any resource")]
+    fn segment_after_page_panics() {
+        let r = router("src/app/mod.rs");
+        // Register a page first, then try to add a segment.
+        let page = FilePage::new("src/app/about.rs", || Box::pin(async { View::new("") }));
+        r.page(page)
+            .segment(seg("src/app/users.rs", Some(SegmentKind::Param), None));
+    }
+}

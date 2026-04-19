@@ -298,7 +298,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "segment must not be empty")]
+    #[should_panic(expected = "invalid segment: empty string")]
     fn empty_segment() {
         PathSegment::new("");
     }
