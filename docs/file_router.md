@@ -81,6 +81,19 @@ topcoat::router::segment!(kind = Static);
 
 This turns it into a regular path segment (the `_` prefix is stripped and the name is kebab-cased).
 
+The `_`-prefix can also act as a naming convention for route-specific utilities. For example, a `_components` module for shared UI fragments:
+
+```
+app/
+  mod.rs
+  _components/
+    mod.rs            # exports shared components, no route
+    header.rs
+    footer.rs
+  about.rs            # /about — can use app::_components::header
+  contact.rs          # /contact
+```
+
 ## Dynamic segments (params)
 
 Use `segment!` to mark a module as a dynamic parameter:
