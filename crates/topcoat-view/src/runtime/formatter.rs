@@ -1,5 +1,3 @@
-use std::fmt::Write;
-
 /// An HTML-aware writer that escapes text content by default.
 ///
 /// `Formatter` wraps a [`String`] buffer and provides paired

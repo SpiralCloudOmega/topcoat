@@ -5,6 +5,10 @@ use syn::{
     parse::{Parse, ParseStream},
 };
 
+#[expect(
+    dead_code,
+    reason = "parsed for syntax validation; not yet consumed by code generation"
+)]
 pub struct RouteAttr {
     path: Option<LitStr>,
 }
@@ -17,6 +21,10 @@ impl Parse for RouteAttr {
     }
 }
 
+#[expect(
+    dead_code,
+    reason = "parsed for syntax validation; not yet consumed by code generation"
+)]
 pub struct RouteItem {
     item: ItemFn,
 }
@@ -30,5 +38,5 @@ impl Parse for RouteItem {
 }
 
 impl ToTokens for RouteItem {
-    fn to_tokens(&self, tokens: &mut TokenStream) {}
+    fn to_tokens(&self, _: &mut TokenStream) {}
 }

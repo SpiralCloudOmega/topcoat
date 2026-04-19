@@ -66,6 +66,10 @@ mod kw {
     custom_keyword!(rename);
 }
 
+#[expect(
+    dead_code,
+    reason = "parsed for syntax validation; not yet consumed by code generation"
+)]
 pub enum SegmentAttr {
     Kind {
         kind_kw: kw::kind,
