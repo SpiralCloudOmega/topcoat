@@ -6,6 +6,26 @@ use std::{
 
 use ref_cast::RefCast;
 
+/// A borrowed route path, similar to [`std::path::Path`] but for URL paths.
+///
+/// A `Path` consists of `/`-separated segments, where each segment is one of:
+/// - **Static** — a literal string (e.g. `users`)
+/// - **Param** — a dynamic parameter in braces (e.g. `{id}`)
+/// - **CatchAll** — a wildcard tail in braces with `*` (e.g. `{*rest}`)
+/// - **Group** — a logical grouping in parentheses (e.g. `(auth)`), stripped when converting to an Axum path
+///
+/// The root path `"/"` is normalized to an empty inner string. Use [`Path::new`] to
+/// create a `&Path` from a string slice.
+///
+/// # Examples
+///
+/// ```
+/// use topcoat_router::Path;
+///
+/// let path = Path::new("/users/(group)/{id}");
+/// assert_eq!(path.segments().count(), 3);
+/// assert_eq!(path.to_axum_path(), "/users/{id}");
+/// ```
 #[derive(Debug, PartialEq, Eq, Hash, RefCast)]
 #[repr(transparent)]
 pub struct Path {
@@ -13,6 +33,11 @@ pub struct Path {
 }
 
 impl Path {
+    /// Creates a `&Path` from a string slice.
+    ///
+    /// The root path `"/"` is normalized to an empty inner representation so that
+    /// it produces zero segments, matching the convention that the root layout
+    /// applies to all pages.
     pub fn new<S: AsRef<str> + ?Sized>(s: &S) -> &Self {
         let s = s.as_ref();
         if s == "/" {
@@ -21,10 +46,44 @@ impl Path {
         Self::ref_cast(s)
     }
 
+    /// Returns an iterator over the [`PathSegment`]s of this path.
+    ///
+    /// The root path yields zero segments.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use topcoat_router::{Path, PathSegment};
+    ///
+    /// let path = Path::new("/users/{id}/(auth)");
+    /// let segs: Vec<_> = path.segments().collect();
+    /// assert_eq!(segs, vec![
+    ///     PathSegment::Static("users"),
+    ///     PathSegment::Param("id"),
+    ///     PathSegment::Group("auth"),
+    /// ]);
+    /// ```
     pub fn segments(&self) -> impl Iterator<Item = PathSegment<'_>> {
         self.inner.split("/").skip(1).map(PathSegment::new)
     }
 
+    /// Converts this path to an Axum-compatible path string, stripping group segments.
+    ///
+    /// Group segments (e.g. `(auth)`) are used for layout matching but are not
+    /// part of the URL that Axum routes against. This method removes them and
+    /// returns the remaining path.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use topcoat_router::Path;
+    ///
+    /// let path = Path::new("/(auth)/dashboard/{id}");
+    /// assert_eq!(path.to_axum_path(), "/dashboard/{id}");
+    ///
+    /// let root = Path::new("/");
+    /// assert_eq!(root.to_axum_path(), "/");
+    /// ```
     pub fn to_axum_path(&self) -> Cow<'static, str> {
         if self.inner.is_empty() {
             return Cow::Borrowed("/");
@@ -37,6 +96,21 @@ impl Path {
         )
     }
 
+    /// Returns `true` if this path starts with the given prefix path.
+    ///
+    /// Comparison is done segment-by-segment using [`PathSegment`] equality.
+    /// This is used to determine which layouts apply to a given page — a layout
+    /// at `"/settings"` matches any page whose path starts with `/settings`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use topcoat_router::Path;
+    ///
+    /// let path = Path::new("/users/{id}/posts");
+    /// assert!(path.starts_with(Path::new("/users/{id}")));
+    /// assert!(!path.starts_with(Path::new("/posts/{id}")));
+    /// ```
     pub fn starts_with(&self, other: &Path) -> bool {
         if self.inner.len() < other.inner.len() {
             return false;
@@ -61,12 +135,28 @@ impl ToOwned for Path {
     }
 }
 
+/// An owned route path, similar to [`std::path::PathBuf`] but for URL paths.
+///
+/// `PathBuf` is the owned counterpart of [`Path`]. It can be built incrementally
+/// by adding [`PathSegment`]s with `+=`, or collected from an iterator of segments.
+///
+/// # Examples
+///
+/// ```
+/// use topcoat_router::{PathBuf, PathSegment};
+///
+/// let mut buf = PathBuf::new();
+/// buf += PathSegment::Static("users");
+/// buf += PathSegment::Param("id");
+/// assert_eq!(buf.to_string(), "/users/{id}");
+/// ```
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct PathBuf {
     inner: String,
 }
 
 impl PathBuf {
+    /// Creates a new empty `PathBuf`.
     pub fn new() -> Self {
         Default::default()
     }
@@ -108,15 +198,42 @@ impl Display for PathBuf {
     }
 }
 
+/// A single segment of a route [`Path`].
+///
+/// Topcoat paths use four segment types:
+///
+/// | Syntax      | Variant    | Example     | Description                                            |
+/// |-------------|------------|-------------|--------------------------------------------------------|
+/// | `foo`       | `Static`   | `users`     | Literal URL segment                                    |
+/// | `{name}`    | `Param`    | `{id}`      | Dynamic parameter, extracted at request time            |
+/// | `{*name}`   | `CatchAll` | `{*path}`   | Wildcard tail, matches the rest of the URL             |
+/// | `(name)`    | `Group`    | `(auth)`    | Logical grouping for layout matching, stripped from URL |
+///
+/// Segment names (for `Param`, `CatchAll`, and `Group`) must be valid
+/// identifiers: starting with a letter or underscore, containing only
+/// ASCII alphanumerics and underscores.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PathSegment<'a> {
+    /// A literal URL segment (e.g. `users`).
     Static(&'a str),
+    /// A logical grouping segment (e.g. `(auth)`), stripped from the URL path.
     Group(&'a str),
+    /// A dynamic parameter segment (e.g. `{id}`).
     Param(&'a str),
+    /// A wildcard tail segment (e.g. `{*rest}`), matching the remainder of the URL.
     CatchAll(&'a str),
 }
 
 impl<'a> PathSegment<'a> {
+    /// Parses a single path segment string into a [`PathSegment`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if the segment is malformed:
+    /// - Empty string
+    /// - Missing closing `}` or `)`
+    /// - Invalid identifier (empty name, starts with a digit, contains non-alphanumeric/underscore characters)
+    /// - Unexpected brackets in a static segment (e.g. `foo{bar}`)
     pub fn new(s: &'a str) -> Self {
         if s.starts_with('{') {
             if !s.ends_with('}') {
@@ -150,7 +267,7 @@ impl<'a> PathSegment<'a> {
 
     /// Returns `true` if the segment is [`Static`].
     ///
-    /// [`Static`]: Segment::Static
+    /// [`Static`]: PathSegment::Static
     #[must_use]
     pub fn is_static(&self) -> bool {
         matches!(self, Self::Static(..))
@@ -158,7 +275,7 @@ impl<'a> PathSegment<'a> {
 
     /// Returns `true` if the segment is [`Group`].
     ///
-    /// [`Group`]: Segment::Group
+    /// [`Group`]: PathSegment::Group
     #[must_use]
     pub fn is_group(&self) -> bool {
         matches!(self, Self::Group(..))
@@ -166,7 +283,7 @@ impl<'a> PathSegment<'a> {
 
     /// Returns `true` if the segment is [`Param`].
     ///
-    /// [`Param`]: Segment::Param
+    /// [`Param`]: PathSegment::Param
     #[must_use]
     pub fn is_param(&self) -> bool {
         matches!(self, Self::Param(..))
@@ -174,12 +291,13 @@ impl<'a> PathSegment<'a> {
 
     /// Returns `true` if the segment is [`CatchAll`].
     ///
-    /// [`CatchAll`]: Segment::CatchAll
+    /// [`CatchAll`]: PathSegment::CatchAll
     #[must_use]
     pub fn is_catch_all(&self) -> bool {
         matches!(self, Self::CatchAll(..))
     }
 
+    /// Returns the inner string if this is a [`Static`](PathSegment::Static) segment.
     pub fn as_static(&self) -> Option<&&'a str> {
         if let Self::Static(v) = self {
             Some(v)
@@ -188,6 +306,7 @@ impl<'a> PathSegment<'a> {
         }
     }
 
+    /// Returns the inner string if this is a [`Group`](PathSegment::Group) segment.
     pub fn as_group(&self) -> Option<&&'a str> {
         if let Self::Group(v) = self {
             Some(v)
@@ -196,6 +315,7 @@ impl<'a> PathSegment<'a> {
         }
     }
 
+    /// Returns the inner string if this is a [`Param`](PathSegment::Param) segment.
     pub fn as_param(&self) -> Option<&&'a str> {
         if let Self::Param(v) = self {
             Some(v)
@@ -204,6 +324,7 @@ impl<'a> PathSegment<'a> {
         }
     }
 
+    /// Returns the inner string if this is a [`CatchAll`](PathSegment::CatchAll) segment.
     pub fn as_catch_all(&self) -> Option<&&'a str> {
         if let Self::CatchAll(v) = self {
             Some(v)
