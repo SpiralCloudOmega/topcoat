@@ -97,6 +97,7 @@ impl crate::pretty::PrettyPrint for Node {
             Self::Text(inner) => inner.pretty_print(printer),
             Self::DocumentType(inner) => inner.pretty_print(printer),
             Self::Element(inner) => inner.pretty_print(printer),
+            Self::Component(inner) => inner.pretty_print(printer),
             _ => {
                 // TODO
             }

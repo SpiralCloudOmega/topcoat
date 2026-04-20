@@ -1,5 +1,6 @@
 mod attribute;
 mod component;
+mod component_tag;
 mod document_type;
 mod element;
 mod element_name;
@@ -16,6 +17,7 @@ mod view;
 
 pub use attribute::*;
 pub use component::*;
+pub use component_tag::*;
 pub use document_type::*;
 pub use element::*;
 pub use element_name::*;

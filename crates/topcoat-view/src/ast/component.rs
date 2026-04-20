@@ -7,7 +7,10 @@ use syn::{
 };
 
 use crate::{
-    ast::{Attributes, Node, ParseOption},
+    ast::{
+        Attributes, ComponentClosingTag, ComponentOpeningTag, ComponentSelfClosingTag, Node,
+        ParseOption,
+    },
     output::ViewWriter,
 };
 
@@ -127,69 +130,34 @@ impl ParseOption for Component {
         input.peek(Bracket)
     }
 }
-
-pub struct ComponentOpeningTag {
-    pub bracket_token: Bracket,
-    pub path: Path,
-    pub attributes: Attributes,
-}
-
-impl Parse for ComponentOpeningTag {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let content;
-        Ok(Self {
-            bracket_token: bracketed!(content in input),
-            path: content.parse()?,
-            attributes: content.parse()?,
-        })
-    }
-}
-
-pub struct ComponentSelfClosingTag {
-    pub bracket_token: Bracket,
-    pub path: Path,
-    pub attributes: Attributes,
-    pub slash: Token![/],
-}
-
-impl Parse for ComponentSelfClosingTag {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let content;
-        Ok(Self {
-            bracket_token: bracketed!(content in input),
-            path: content.parse()?,
-            attributes: content.parse()?,
-            slash: content.parse()?,
-        })
-    }
-}
-
-pub struct ComponentClosingTag {
-    pub bracket_token: Bracket,
-    pub slash: Token![/],
-    pub path: Path,
-}
-
-impl Parse for ComponentClosingTag {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let content;
-        Ok(Self {
-            bracket_token: bracketed!(content in input),
-            slash: content.parse()?,
-            path: content.parse()?,
-        })
-    }
-}
-
-impl ParseOption for ComponentClosingTag {
-    fn peek(input: ParseStream) -> bool {
-        fn inner(input: ParseStream) -> syn::Result<()> {
-            let content;
-            let _ = bracketed!(content in input.fork());
-            let _: Token![/] = content.parse()?;
-            Ok(())
+#[cfg(feature = "pretty")]
+impl crate::pretty::PrettyPrint for Component {
+    fn pretty_print(&self, printer: &mut crate::pretty::Printer<'_>) {
+        printer.scan_begin(crate::pretty::BreakMode::Consistent);
+        match self {
+            Self::Normal {
+                opening_tag,
+                children,
+                closing_tag,
+            } => {
+                opening_tag.pretty_print(printer);
+                printer.scan_indent(1);
+                printer.scan_break();
+                for (index, node) in children.iter().enumerate() {
+                    node.pretty_print(printer);
+                    if index < children.len() - 1 {
+                        printer.scan_same_line_trivia();
+                        printer.scan_break();
+                        " ".pretty_print(printer);
+                        printer.scan_trivia(true, true);
+                    }
+                }
+                printer.scan_indent(-1);
+                printer.scan_break();
+                closing_tag.pretty_print(printer);
+            }
+            Self::SelfClosing { tag } => tag.pretty_print(printer),
         }
-
-        inner(input).is_ok()
+        printer.scan_end();
     }
 }
