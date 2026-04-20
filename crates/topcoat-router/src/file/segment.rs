@@ -32,15 +32,20 @@ pub enum SegmentKind {
     CatchAll,
 }
 
+/// A file-router segment declaration, produced by the `segment!` macro.
 #[doc(hidden)]
 #[derive(Debug, Clone)]
 pub struct Segment {
+    /// Source file path (set automatically by the `segment!` macro via `file!()`).
     file: &'static str,
+    /// Overridden segment kind, or `None` to use the default (static / group).
     kind: Option<SegmentKind>,
+    /// Overridden URL name, or `None` to derive from the module name.
     rename: Option<Cow<'static, str>>,
 }
 
 impl Segment {
+    /// Creates a new segment. Called by the expanded `segment!` macro.
     pub const fn new(
         file: &'static str,
         kind: Option<SegmentKind>,
@@ -49,14 +54,17 @@ impl Segment {
         Self { file, kind, rename }
     }
 
+    /// Returns the source file that declared this segment.
     pub fn file(&self) -> &'static str {
         self.file
     }
 
+    /// Returns the overridden [`SegmentKind`], if any.
     pub fn kind(&self) -> Option<&SegmentKind> {
         self.kind.as_ref()
     }
 
+    /// Returns the overridden URL name, if any.
     pub fn rename(&self) -> Option<&str> {
         self.rename.as_deref()
     }
@@ -65,6 +73,11 @@ impl Segment {
 #[cfg(feature = "discover")]
 inventory::collect!(Segment);
 
+/// Registry of [`Segment`] declarations, keyed by module path.
+///
+/// The file router builds a `Segments` map from all `segment!` invocations,
+/// then consults it while walking the module tree to determine each module's
+/// URL contribution.
 #[doc(hidden)]
 #[derive(Debug, Default, Clone)]
 pub struct Segments {
@@ -72,20 +85,24 @@ pub struct Segments {
 }
 
 impl Segments {
+    /// Creates an empty registry.
     pub fn new() -> Self {
         Default::default()
     }
 
+    /// Registers a segment for a module path. Panics on duplicates.
     pub fn register(&mut self, path: &'static str, segment: Segment) {
         if let Some(existing) = self.segments.insert(path, segment) {
             panic!("duplicate segment specifier in `{}`", existing.file())
         }
     }
 
+    /// Looks up the segment declaration for a module path.
     pub fn get(&self, path: &str) -> Option<&Segment> {
         self.segments.get(path)
     }
 
+    /// Returns `true` if no segments have been registered.
     pub fn is_empty(&self) -> bool {
         self.segments.is_empty()
     }
