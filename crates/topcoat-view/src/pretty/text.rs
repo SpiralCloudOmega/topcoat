@@ -72,6 +72,7 @@ impl_token!($);
 impl_token!(as);
 impl_token!(=>);
 impl_token!(<=);
+impl_token!(let);
 impl_token!(where);
 impl_token!(if);
 impl_token!(else);

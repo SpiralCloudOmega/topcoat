@@ -47,7 +47,7 @@ impl crate::pretty::PrettyPrint for NodeForLoop {
     fn pretty_print(&self, printer: &mut crate::pretty::Printer<'_>) {
         self.for_token.pretty_print(printer);
         " ".pretty_print(printer);
-        // TODO
+        self.pat.pretty_print(printer);
         " ".pretty_print(printer);
         self.in_token.pretty_print(printer);
         " ".pretty_print(printer);

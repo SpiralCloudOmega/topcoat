@@ -122,7 +122,7 @@ impl Parse for NodeMatchArm {
 #[cfg(feature = "pretty")]
 impl crate::pretty::PrettyPrint for NodeMatchArm {
     fn pretty_print(&self, printer: &mut crate::pretty::Printer<'_>) {
-        // todo
+        self.pat.pretty_print(printer);
         " ".pretty_print(printer);
         self.fat_arrow_token.pretty_print(printer);
         if let Some((if_token, expr)) = &self.guard {

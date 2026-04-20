@@ -28,12 +28,13 @@ async fn layout(slot: Slot) -> View {
                     <a href="/contact">"contact"</a>
                 </nav>
                 <hr>
+    let x = 5+6;
 
                 "current page: "
                 (slot.await)
 
         match 5 {
-                6 => <div>"hi"</div>,
+                6|8 => <div>"hi"</div>,
                 7 => {
             <br>
             <span>"bye"</span>

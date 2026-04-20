@@ -49,6 +49,60 @@ impl PrettyPrint for syn::Expr {
     }
 }
 
+impl PrettyPrint for syn::Pat {
+    fn pretty_print(&self, printer: &mut Printer<'_>) {
+        let source_text = self
+            .span()
+            .source_text()
+            .expect("cannot pretty print rust expr without source text");
+        let command = Command::new("rustfmt")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("failed to run rustfmt on nested rust expression");
+        let mut stdin = command.stdin.as_ref().expect("command must has stdin");
+        for _ in 0..printer.current_indent() {
+            stdin.write_all("const _: () = {".as_bytes()).unwrap();
+        }
+        stdin
+            .write_all("const _: () = matches!(x, ".as_bytes())
+            .unwrap();
+        stdin.write_all(source_text.as_bytes()).unwrap();
+        stdin.write_all(");".as_bytes()).unwrap();
+        for _ in 0..printer.current_indent() {
+            stdin.write_all("};".as_bytes()).unwrap();
+        }
+        let output = command
+            .wait_with_output()
+            .expect("failed to run rustfmt on nested rust expression");
+        let output = String::from_utf8(output.stdout).expect("rustfmt output must be utf8");
+        let output = pretty_print_rust_str(&output).unwrap();
+        let mut stripped = output.trim();
+        for _ in 0..printer.current_indent() {
+            stripped = stripped.strip_prefix("const _: () = {").unwrap();
+            stripped = stripped.strip_suffix("};").unwrap();
+            stripped = stripped.trim();
+        }
+        let stripped = stripped.strip_prefix("const _: () = matches!(x, ").unwrap();
+        let stripped = stripped.strip_suffix(");").unwrap();
+        let output = stripped.to_owned();
+        output.pretty_print(printer);
+    }
+}
+
+impl PrettyPrint for syn::ExprLet {
+    fn pretty_print(&self, printer: &mut Printer<'_>) {
+        self.attrs.pretty_print(printer);
+        self.let_token.pretty_print(printer);
+        " ".pretty_print(printer);
+        self.pat.pretty_print(printer);
+        " ".pretty_print(printer);
+        self.eq_token.pretty_print(printer);
+        " ".pretty_print(printer);
+        self.expr.pretty_print(printer);
+    }
+}
+
 impl PrettyPrint for syn::Attribute {
     fn pretty_print(&self, printer: &mut Printer<'_>) {
         if self.meta.path().is_ident("doc") {
