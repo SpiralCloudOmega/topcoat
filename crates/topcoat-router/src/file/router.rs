@@ -124,6 +124,10 @@ impl FileRouter {
     }
 
     /// Registers a [`FilePage`], computing its route path from the source file.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a page has already been registered for the same path.
     pub fn page(mut self, page: FilePage) -> Self {
         let file = page.file();
         let page = page.into_page(Cow::Owned(self.file_to_path(file)));
@@ -132,6 +136,10 @@ impl FileRouter {
     }
 
     /// Registers a [`FileLayout`], computing its route path from the source file.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a layout has already been registered for the same path.
     pub fn layout(mut self, layout: FileLayout) -> Self {
         let file = layout.file();
         let layout = layout.into_layout(Cow::Owned(self.file_to_path(file)));
