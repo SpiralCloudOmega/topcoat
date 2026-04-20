@@ -43,3 +43,23 @@ impl ParseOption for NodeBlock {
         input.peek(Brace)
     }
 }
+
+#[cfg(feature = "pretty")]
+impl crate::pretty::PrettyPrint for NodeBlock {
+    fn pretty_print(&self, printer: &mut crate::pretty::Printer<'_>) {
+        use crate::pretty::{BreakMode, Delim};
+
+        self.brace
+            .pretty_print(printer, Some(BreakMode::Consistent), |printer| {
+                for (index, node) in self.children.iter().enumerate() {
+                    node.pretty_print(printer);
+                    if index < self.children.len() - 1 {
+                        printer.scan_same_line_trivia();
+                        printer.scan_force_break();
+                        " ".pretty_print(printer);
+                        printer.scan_trivia(true, true);
+                    }
+                }
+            });
+    }
+}

@@ -42,6 +42,17 @@ impl ParseOption for NodeIf {
     }
 }
 
+#[cfg(feature = "pretty")]
+impl crate::pretty::PrettyPrint for NodeIf {
+    fn pretty_print(&self, printer: &mut crate::pretty::Printer<'_>) {
+        self.if_token.pretty_print(printer);
+        " ".pretty_print(printer);
+        // TODO
+        self.then_branch.pretty_print(printer);
+        self.else_branch.pretty_print(printer);
+    }
+}
+
 pub enum NodeElse {
     ElseIf {
         else_token: Token![else],
@@ -83,5 +94,31 @@ impl Parse for NodeElse {
 impl ParseOption for NodeElse {
     fn peek(input: ParseStream) -> bool {
         input.peek(Token![else])
+    }
+}
+
+#[cfg(feature = "pretty")]
+impl crate::pretty::PrettyPrint for NodeElse {
+    fn pretty_print(&self, printer: &mut crate::pretty::Printer<'_>) {
+        match self {
+            Self::ElseIf {
+                else_token,
+                node_if,
+            } => {
+                " ".pretty_print(printer);
+                else_token.pretty_print(printer);
+                " ".pretty_print(printer);
+                node_if.pretty_print(printer);
+            }
+            Self::Else {
+                else_token,
+                then_branch,
+            } => {
+                " ".pretty_print(printer);
+                else_token.pretty_print(printer);
+                " ".pretty_print(printer);
+                then_branch.pretty_print(printer);
+            }
+        }
     }
 }

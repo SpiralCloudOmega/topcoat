@@ -33,3 +33,15 @@ impl ParseOption for NodeExpr {
         input.peek(syn::token::Paren)
     }
 }
+
+#[cfg(feature = "pretty")]
+impl crate::pretty::PrettyPrint for NodeExpr {
+    fn pretty_print(&self, printer: &mut crate::pretty::Printer<'_>) {
+        use crate::pretty::{BreakMode, Delim};
+
+        self.paren
+            .pretty_print(printer, Some(BreakMode::Inconsistent), |_printer| {
+                // TODO
+            });
+    }
+}

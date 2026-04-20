@@ -31,6 +31,13 @@ async fn layout(slot: Slot) -> View {
 
                 "current page: "
                 (slot.await)
+
+
+                if true {
+                "hello"
+            } else {
+                <div>"bye"</div>
+            }
             </body>
         </html>
     }
