@@ -54,6 +54,10 @@ impl Router {
 
     /// Registers a [`Page`]. Order doesn't matter — layout matching
     /// is based on path prefixes, not registration order.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a page has already been registered for the same path.
     pub fn page(mut self, page: Page) -> Self {
         self.pages.register(page);
         self
@@ -61,6 +65,10 @@ impl Router {
 
     /// Registers a [`Layout`]. A layout applies to every page whose
     /// path starts with the layout's path prefix.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a layout has already been registered for the same path.
     pub fn layout(mut self, layout: Layout) -> Self {
         self.layouts.register(layout);
         self
