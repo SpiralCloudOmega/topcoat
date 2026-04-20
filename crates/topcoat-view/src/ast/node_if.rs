@@ -47,7 +47,8 @@ impl crate::pretty::PrettyPrint for NodeIf {
     fn pretty_print(&self, printer: &mut crate::pretty::Printer<'_>) {
         self.if_token.pretty_print(printer);
         " ".pretty_print(printer);
-        // TODO
+        self.cond.pretty_print(printer);
+        " ".pretty_print(printer);
         self.then_branch.pretty_print(printer);
         self.else_branch.pretty_print(printer);
     }

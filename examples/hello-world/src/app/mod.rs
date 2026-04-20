@@ -42,7 +42,13 @@ async fn layout(slot: Slot) -> View {
             }
 
 
-                if true {
+                if {
+        let kek = 5;
+
+
+        // big if true
+        kek == 6
+    } {
                 "hello"
             } else {
                 <div>"bye"</div>

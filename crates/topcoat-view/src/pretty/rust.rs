@@ -1,7 +1,39 @@
+use std::{
+    io::Write,
+    process::{Command, Stdio},
+};
+
 use quote::ToTokens;
 use syn::spanned::Spanned;
 
 use super::{PrettyPrint, Printer, TextMode};
+
+impl PrettyPrint for syn::Expr {
+    fn pretty_print(&self, printer: &mut Printer<'_>) {
+        let source_text = self
+            .span()
+            .source_text()
+            .expect("cannot pretty print rust expr without source text");
+        let command = Command::new("rustfmt")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("failed to run rustfmt on nested rust expression");
+        let mut stdin = command.stdin.as_ref().expect("command must has stdin");
+        eprintln!("input: {}", source_text);
+        stdin.write_all("const _: () = ".as_bytes()).unwrap();
+        stdin.write_all(source_text.as_bytes()).unwrap();
+        stdin.write_all(";".as_bytes()).unwrap();
+        let output = command
+            .wait_with_output()
+            .expect("failed to run rustfmt on nested rust expression");
+        let output = String::from_utf8(output.stdout).expect("rustfmt output must be utf8");
+        let stripped = output.strip_prefix("const _: () = ").unwrap();
+        let stripped = stripped.strip_suffix(";\n").unwrap();
+        let output = stripped.to_owned();
+        output.pretty_print(printer);
+    }
+}
 
 impl PrettyPrint for syn::Attribute {
     fn pretty_print(&self, printer: &mut Printer<'_>) {
