@@ -56,6 +56,8 @@ impl crate::pretty::PrettyPrint for NodeBlock {
         printer.scan_indent(1);
         printer.scan_break();
 
+        printer.scan_trivia(false, true);
+
         for (index, node) in self.children.iter().enumerate() {
             node.pretty_print(printer);
             if index < self.children.len() - 1 {
@@ -66,11 +68,13 @@ impl crate::pretty::PrettyPrint for NodeBlock {
             }
         }
 
+        printer.move_cursor(self.brace.span().close().start());
+        printer.scan_trivia(true, false);
+
         printer.scan_indent(-1);
         printer.scan_force_break();
         printer.scan_break();
 
-        printer.move_cursor(self.brace.span().close().start());
         "}".pretty_print(printer);
         printer.move_cursor(self.brace.span().close().end());
     }

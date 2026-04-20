@@ -57,9 +57,11 @@ async fn layout(slot: Slot) -> View {
         // in if
                 "hello"
             } else {
+                    // test2
                 <div>"bye"</div>
             }
 
+        //befoer for
             for kek in [1, 2, 3] {
             <div>"hi"</div>
         }
