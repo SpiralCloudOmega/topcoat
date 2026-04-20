@@ -15,7 +15,7 @@ use crate::{
 pub enum Node {
     Text(LitStr),
     DocumentType(DocumentType),
-    Element(Element),
+    Element(Box<Element>),
     Component(Component),
     Expr(NodeExpr),
     If(NodeIf),
@@ -96,7 +96,10 @@ impl crate::pretty::PrettyPrint for Node {
         match self {
             Self::Text(inner) => inner.pretty_print(printer),
             Self::DocumentType(inner) => inner.pretty_print(printer),
-            _ => todo!("missing node formatting implementation"),
+            Self::Element(inner) => inner.pretty_print(printer),
+            _ => {
+                // TODO
+            }
         }
     }
 }

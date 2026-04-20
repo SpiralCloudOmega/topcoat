@@ -40,6 +40,15 @@ impl ParseOption for Attribute {
     }
 }
 
+#[cfg(feature = "pretty")]
+impl crate::pretty::PrettyPrint for Attribute {
+    fn pretty_print(&self, printer: &mut crate::pretty::Printer<'_>) {
+        self.name.pretty_print(printer);
+        self.eq.pretty_print(printer);
+        self.value.pretty_print(printer);
+    }
+}
+
 pub enum AttributeValue {
     Expr { paren: Paren, expr: Expr },
     LitStr(LitStr),
@@ -80,6 +89,22 @@ impl ToTokens for AttributeValue {
     }
 }
 
+#[cfg(feature = "pretty")]
+impl crate::pretty::PrettyPrint for AttributeValue {
+    fn pretty_print(&self, printer: &mut crate::pretty::Printer<'_>) {
+        match self {
+            Self::LitStr(inner) => inner.pretty_print(printer),
+            Self::Expr { paren, expr } => {
+                use crate::pretty::{BreakMode, Delim};
+                paren.pretty_print(printer, None, |printer| {
+                    todo!();
+                    // expr.pretty_print(printer);
+                });
+            }
+        }
+    }
+}
+
 pub struct Attributes {
     pub items: Vec<Attribute>,
 }
@@ -91,6 +116,11 @@ impl Attributes {
             item.write(writer);
         }
     }
+
+    /// Returns `true` if `self` has no attributes.
+    pub fn is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
 }
 
 impl Parse for Attributes {
@@ -100,5 +130,19 @@ impl Parse for Attributes {
             items.push(attribute);
         }
         Ok(Self { items })
+    }
+}
+
+#[cfg(feature = "pretty")]
+impl crate::pretty::PrettyPrint for Attributes {
+    fn pretty_print(&self, printer: &mut crate::pretty::Printer<'_>) {
+        if self.items.is_empty() {
+            return;
+        }
+        for item in &self.items {
+            printer.scan_break();
+            " ".pretty_print(printer);
+            item.pretty_print(printer);
+        }
     }
 }
