@@ -32,3 +32,11 @@ impl ParseOption for NodeLet {
         input.peek(Token![let])
     }
 }
+
+#[cfg(feature = "pretty")]
+impl crate::pretty::PrettyPrint for NodeLet {
+    fn pretty_print(&self, printer: &mut crate::pretty::Printer<'_>) {
+        // todo
+        self.semi_token.pretty_print(printer);
+    }
+}
