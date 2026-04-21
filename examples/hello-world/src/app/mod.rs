@@ -25,42 +25,9 @@ async fn layout(slot: Slot) -> View {
                     <a href="/contact">"contact"</a>
                 </nav>
                 <hr>
-                let x = 5 + 6;
 
                 "current page: "
                 (slot.await)
-
-                match 5 {
-                    5 | 8 => <div>(x)</div>,
-                    7 => {
-                        <br>
-                        <span>"bye"</span>
-                    }
-                    _ => <span>"rest"</span>,
-                }
-
-                //before if
-                if {
-                    let kek = 5;
-                    view! {
-                        <!DOCTYPE html>
-                        <div>"hi"</div>
-                    };
-
-                    // big if true
-                    kek == 6
-                } {
-                    // in if
-                    "hello"
-                } else {
-                    // test2
-                    <div>"bye"</div>
-                }
-
-                //befoer for
-                for kek in [1, 2, 3] {
-                    <div>"hi"</div>
-                }
             </body>
         </html>
     }
