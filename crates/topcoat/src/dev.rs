@@ -26,6 +26,10 @@ pub async fn notify_ready() {
 }
 
 #[component]
+#[expect(
+    unused_variables,
+    reason = "child is required by the component macro contract but unused here"
+)]
 pub async fn script(child: View) -> View {
     let url = std::env::var("TOPCOAT_DEV_URL").unwrap_or_default();
 
