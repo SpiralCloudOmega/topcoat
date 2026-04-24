@@ -37,11 +37,8 @@ impl ParseOption for NodeExpr {
 #[cfg(feature = "pretty")]
 impl crate::pretty::PrettyPrint for NodeExpr {
     fn pretty_print(&self, printer: &mut crate::pretty::Printer<'_>) {
-        use crate::pretty::{BreakMode, Delim};
-
-        self.paren
-            .pretty_print(printer, Some(BreakMode::Inconsistent), |printer| {
-                self.expr.pretty_print(printer);
-            });
+        "(".pretty_print(printer);
+        self.expr.pretty_print(printer);
+        ")".pretty_print(printer);
     }
 }

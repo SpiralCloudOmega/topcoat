@@ -1,8 +1,3 @@
-use std::{
-    io::Write,
-    process::{Command, Stdio},
-};
-
 use quote::ToTokens;
 use syn::spanned::Spanned;
 
@@ -10,44 +5,46 @@ use crate::pretty::pretty_print_rust_str;
 
 use super::{PrettyPrint, Printer, TextMode};
 
+fn format_rust_snippet(source: &str, prefix: &str, suffix: &str, indent: isize) -> String {
+    let mut input = String::new();
+    for _ in 0..indent {
+        input.push_str("const _: () = {");
+    }
+    input.push_str(prefix);
+    input.push_str(source);
+    input.push_str(suffix);
+    for _ in 0..indent {
+        input.push_str("};");
+    }
+
+    let file = syn::parse_file(&input).expect("failed to parse rust snippet for formatting");
+    let formatted = prettyplease::unparse(&file);
+    let formatted = pretty_print_rust_str(&formatted).unwrap();
+
+    let mut stripped = formatted.trim();
+    for _ in 0..indent {
+        stripped = stripped.strip_prefix("const _: () = {").unwrap();
+        stripped = stripped.strip_suffix("};").unwrap();
+        stripped = stripped.trim();
+    }
+    let stripped = stripped.strip_prefix(prefix).unwrap();
+    let stripped = stripped.strip_suffix(suffix).unwrap();
+    stripped.to_owned()
+}
+
 impl PrettyPrint for syn::Expr {
     fn pretty_print(&self, printer: &mut Printer<'_>) {
         let source_text = self
             .span()
             .source_text()
             .expect("cannot pretty print rust expr without source text");
-        let command = Command::new("rustfmt")
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .spawn()
-            .expect("failed to run rustfmt on nested rust expression");
-        let mut stdin = command.stdin.as_ref().expect("command must has stdin");
-        for _ in 0..printer.current_indent() {
-            stdin.write_all("const _: () = {".as_bytes()).unwrap();
-        }
-        stdin.write_all("const _: () = ".as_bytes()).unwrap();
-        stdin.write_all(source_text.as_bytes()).unwrap();
-        stdin.write_all(";".as_bytes()).unwrap();
-        for _ in 0..printer.current_indent() {
-            stdin.write_all("};".as_bytes()).unwrap();
-        }
-        let output = command
-            .wait_with_output()
-            .expect("failed to run rustfmt on nested rust expression");
-        let output = String::from_utf8(output.stdout).expect("rustfmt output must be utf8");
-        let output = pretty_print_rust_str(&output).unwrap();
-        let mut stripped = output.trim();
-        for _ in 0..printer.current_indent() {
-            stripped = stripped.strip_prefix("const _: () = {").unwrap();
-            stripped = stripped.strip_suffix("};").unwrap();
-            stripped = stripped.trim();
-        }
-        let stripped = stripped.strip_prefix("const _: () = ").unwrap();
-        let stripped = stripped.strip_suffix(";").unwrap();
-        let output = stripped.to_owned();
+        let output = format_rust_snippet(
+            &source_text,
+            "const _: () = ",
+            ";",
+            printer.current_indent(),
+        );
         output.pretty_print(printer);
-        printer.move_cursor(self.span().end());
-        printer.skip_trivia();
     }
 }
 
@@ -57,40 +54,13 @@ impl PrettyPrint for syn::Pat {
             .span()
             .source_text()
             .expect("cannot pretty print rust expr without source text");
-        let command = Command::new("rustfmt")
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .spawn()
-            .expect("failed to run rustfmt on nested rust expression");
-        let mut stdin = command.stdin.as_ref().expect("command must has stdin");
-        for _ in 0..printer.current_indent() {
-            stdin.write_all("const _: () = {".as_bytes()).unwrap();
-        }
-        stdin
-            .write_all("const _: () = matches!(x, ".as_bytes())
-            .unwrap();
-        stdin.write_all(source_text.as_bytes()).unwrap();
-        stdin.write_all(");".as_bytes()).unwrap();
-        for _ in 0..printer.current_indent() {
-            stdin.write_all("};".as_bytes()).unwrap();
-        }
-        let output = command
-            .wait_with_output()
-            .expect("failed to run rustfmt on nested rust expression");
-        let output = String::from_utf8(output.stdout).expect("rustfmt output must be utf8");
-        let output = pretty_print_rust_str(&output).unwrap();
-        let mut stripped = output.trim();
-        for _ in 0..printer.current_indent() {
-            stripped = stripped.strip_prefix("const _: () = {").unwrap();
-            stripped = stripped.strip_suffix("};").unwrap();
-            stripped = stripped.trim();
-        }
-        let stripped = stripped.strip_prefix("const _: () = matches!(x, ").unwrap();
-        let stripped = stripped.strip_suffix(");").unwrap();
-        let output = stripped.to_owned();
+        let output = format_rust_snippet(
+            &source_text,
+            "const _: () = matches!(x, ",
+            ");",
+            printer.current_indent(),
+        );
         output.pretty_print(printer);
-        printer.move_cursor(self.span().end());
-        printer.skip_trivia();
     }
 }
 
