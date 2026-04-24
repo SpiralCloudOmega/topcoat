@@ -59,7 +59,11 @@ impl FmtCommand {
             } else {
                 eprintln!(
                     "{}",
-                    style(format!("successfully formatted {count} files in {:.0?}", start.elapsed())).green()
+                    style(format!(
+                        "successfully formatted {count} files in {:.0?}",
+                        start.elapsed()
+                    ))
+                    .green()
                 )
             }
             Ok(())

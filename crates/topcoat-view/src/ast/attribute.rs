@@ -50,7 +50,7 @@ impl crate::pretty::PrettyPrint for Attribute {
 }
 
 pub enum AttributeValue {
-    Expr { paren: Paren, expr: Expr },
+    Expr { paren: Paren, expr: Box<Expr> },
     LitStr(LitStr),
 }
 
