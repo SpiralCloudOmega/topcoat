@@ -1,7 +1,7 @@
 use axum::{body::Body, routing::get};
 use http::Request;
 
-use crate::{Layout, Layouts, Page, Pages};
+use crate::{Layout, Layouts, Page, Pages, scope_context};
 
 /// The core routing primitive that collects [`Page`]s and [`Layout`]s,
 /// matches layouts to pages by path prefix, and converts into an
@@ -108,7 +108,7 @@ impl From<Router> for axum::Router {
                         render = layout.render(render);
                     }
 
-                    render.await
+                    scope_context(request, render).await
                 }),
             );
         }
