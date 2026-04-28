@@ -42,4 +42,4 @@ syn = "2.0.117"
 thiserror = "2.0.18"
 tokio = "1.51.1"
 tokio-tungstenite = "0.29"
-
+tower = "0.5"
