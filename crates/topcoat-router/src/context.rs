@@ -1,19 +1,23 @@
-use axum::{body::Body, extract::Request};
+use axum::extract::RawPathParams;
 use http::request::Parts;
 use tokio::task_local;
 
 #[derive(Debug)]
 pub struct Cx {
     parts: Parts,
+    params: RawPathParams,
 }
 
 task_local! {
     static CX: Cx;
 }
 
-pub(crate) async fn scope_context<F: Future>(request: Request<Body>, f: F) -> F::Output {
-    let (parts, _body) = request.into_parts();
-    CX.scope(Cx { parts }, f).await
+pub(crate) async fn scope_context<F: Future>(
+    parts: Parts,
+    params: RawPathParams,
+    f: F,
+) -> F::Output {
+    CX.scope(Cx { parts, params }, f).await
 }
 
 pub async fn with_context<F, R>(f: F) -> R
@@ -57,4 +61,12 @@ pub fn headers(cx: &Cx) -> &http::HeaderMap {
 #[must_use]
 pub fn extensions(cx: &Cx) -> &http::Extensions {
     &parts(cx).extensions
+}
+
+/// This is an internal function, use direct path hooks instead.
+#[inline]
+#[must_use]
+#[doc(hidden)]
+pub fn raw_path_params(cx: &Cx) -> &RawPathParams {
+    &cx.params
 }
