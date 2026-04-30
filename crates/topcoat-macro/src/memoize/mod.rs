@@ -98,19 +98,27 @@ impl ToTokens for Memoize {
             ReturnType::Type(_, ty) => quote! { #ty },
         };
 
-        let closure = if asyncness.is_some() {
+        let call = if asyncness.is_some() {
             quote! {
-                async |(#(#key_idents,)*)| {
-                    #(#destructures)*
-                    #(#body_stmts)*
-                }
+                ::topcoat::context::memoize_raw_async(
+                    cx,
+                    (#(#key_idents,)*),
+                    async |(#(#key_idents,)*)| {
+                        #(#destructures)*
+                        #(#body_stmts)*
+                    },
+                ).await
             }
         } else {
             quote! {
-                |(#(#key_idents,)*)| {
-                    #(#destructures)*
-                    #(#body_stmts)*
-                }
+                ::topcoat::context::memoize_raw(
+                    cx,
+                    (#(#key_idents,)*),
+                    |(#(#key_idents,)*)| {
+                        #(#destructures)*
+                        #(#body_stmts)*
+                    },
+                )
             }
         };
 
@@ -120,11 +128,7 @@ impl ToTokens for Memoize {
                 -> ::topcoat::context::Memoized<'__cx, #return_type>
             #where_clause
             {
-                ::topcoat::context::memoize_raw(
-                    cx,
-                    (#(#key_idents,)*),
-                    #closure,
-                )
+                #call
             }
         }
         .to_tokens(tokens);

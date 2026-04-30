@@ -13,9 +13,9 @@ use crate::context::Cx;
 
 pub fn memoize_raw<'a, K, V, F>(cx: &'a Cx, key: K, f: F) -> Memoized<'a, V>
 where
-    K: DynKey,
+    K: DynKey + Clone,
     V: Send + Sync + 'static,
-    F: FnOnce() -> V,
+    F: FnOnce(K) -> V,
 {
     Memoized {
         inner: cx.cache.memoize(key, f),
@@ -25,18 +25,13 @@ where
 
 pub async fn memoize_raw_async<'a, K, V, F, Fut>(cx: &'a Cx, key: K, f: F) -> Memoized<'a, V>
 where
-    K: DynKey,
+    K: DynKey + Clone,
     V: Send + Sync + 'static,
-    F: FnOnce() -> Fut,
+    F: FnOnce(K) -> Fut,
     Fut: Future<Output = V>,
 {
-    let cell = memoize_raw(cx, key, OnceCell::<Arc<V>>::new);
-    let inner = cell
-        .get_or_init(|| async { Arc::new(f().await) })
-        .await
-        .clone();
     Memoized {
-        inner,
+        inner: cx.cache.memoize_async(key, f).await,
         lifetime: Default::default(),
     }
 }
@@ -72,9 +67,9 @@ impl DynCache {
 
     fn memoize<K, V, F>(&self, key: K, f: F) -> Arc<V>
     where
-        K: DynKey,
+        K: DynKey + Clone,
         V: Send + Sync + 'static,
-        F: FnOnce() -> V,
+        F: FnOnce(K) -> V,
     {
         let mut guard = self.entries.lock().unwrap();
         if let Some(value) = guard.get(&key as &dyn DynKey) {
@@ -83,10 +78,35 @@ impl DynCache {
                 .downcast::<V>()
                 .expect("wrong value type used for cache lookup")
         } else {
-            let value = Arc::new(f());
+            let value = Arc::new(f(key.clone()));
             guard.insert(Box::new(key), value.clone());
             value
         }
+    }
+
+    async fn memoize_async<K, V, F, Fut>(&self, key: K, f: F) -> Arc<V>
+    where
+        K: DynKey + Clone,
+        V: Send + Sync + 'static,
+        F: FnOnce(K) -> Fut,
+        Fut: Future<Output = V>,
+    {
+        let cell: Arc<OnceCell<Arc<V>>> = {
+            let mut guard = self.entries.lock().unwrap();
+            if let Some(value) = guard.get(&key as &dyn DynKey) {
+                value
+                    .clone()
+                    .downcast::<OnceCell<Arc<V>>>()
+                    .expect("wrong value type used for cache lookup")
+            } else {
+                let cell = Arc::new(OnceCell::<Arc<V>>::new());
+                guard.insert(Box::new(key.clone()), cell.clone());
+                cell
+            }
+        };
+        cell.get_or_init(|| async { Arc::new(f(key).await) })
+            .await
+            .clone()
     }
 }
 
