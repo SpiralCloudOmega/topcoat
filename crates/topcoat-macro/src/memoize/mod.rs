@@ -73,6 +73,7 @@ impl ToTokens for Memoize {
 
         let mut new_inputs: Vec<TokenStream> = Vec::new();
         let mut key_idents: Vec<syn::Ident> = Vec::new();
+        let mut closure_pats: Vec<TokenStream> = Vec::new();
         let mut destructures: Vec<TokenStream> = Vec::new();
 
         for arg in &sig.inputs {
@@ -85,12 +86,24 @@ impl ToTokens for Memoize {
                 new_inputs.push(quote! { cx: &'__cx ::topcoat::context::Cx });
                 continue;
             }
-            let synth = format_ident!("__key_{}", key_idents.len());
             let ty = &pat_type.ty;
             let pat = &pat_type.pat;
-            new_inputs.push(quote! { #synth: #ty });
-            destructures.push(quote! { let #pat = #synth; });
-            key_idents.push(synth);
+            if let Pat::Ident(pi) = &**pat
+                && pi.by_ref.is_none()
+                && pi.subpat.is_none()
+            {
+                let mutability = &pi.mutability;
+                let ident = pi.ident.clone();
+                new_inputs.push(quote! { #mutability #ident: #ty });
+                closure_pats.push(quote! { #mutability #ident });
+                key_idents.push(ident);
+            } else {
+                let synth = format_ident!("__key_{}", key_idents.len());
+                new_inputs.push(quote! { #synth: #ty });
+                destructures.push(quote! { let #pat = #synth; });
+                closure_pats.push(quote! { #synth });
+                key_idents.push(synth);
+            }
         }
 
         let return_type = match &sig.output {
@@ -103,7 +116,7 @@ impl ToTokens for Memoize {
                 ::topcoat::context::memoize_raw_async(
                     cx,
                     (::std::marker::PhantomData::<__MemoizeTag>, #(#key_idents,)*),
-                    async |(_, #(#key_idents,)*)| {
+                    async |(_, #(#closure_pats,)*)| {
                         #(#destructures)*
                         #(#body_stmts)*
                     },
@@ -114,7 +127,7 @@ impl ToTokens for Memoize {
                 ::topcoat::context::memoize_raw(
                     cx,
                     (::std::marker::PhantomData::<__MemoizeTag>, #(#key_idents,)*),
-                    |(_, #(#key_idents,)*)| {
+                    |(_, #(#closure_pats,)*)| {
                         #(#destructures)*
                         #(#body_stmts)*
                     },
