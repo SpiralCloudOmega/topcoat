@@ -60,7 +60,9 @@ async fn smep<'__cx>(cx: &'__cx ::topcoat::context::Cx, x: &str, y: i32) -> () {
     static CACHE: ::std::sync::Mutex<
         ::std::collections::HashMap<
             ::topcoat::context::CxId,
-            ::std::sync::Arc<::std::collections::HashMap<(String, i32), String>>,
+            ::std::sync::Arc<
+                ::std::sync::Mutex<::std::collections::HashMap<(String, i32), String>>,
+            >,
         >,
     > = ::std::default::Default::default();
 }

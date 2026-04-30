@@ -10,20 +10,23 @@ use std::{
 use bumpalo::Bump;
 use tokio::sync::OnceCell;
 
-use crate::context::Cx;
+use crate::context::{Cx, CxId};
 
-struct MemoizeCache<K, V> {}
+struct MemoizeCache<K, V> {
+    entries: Mutex<HashMap<CxId, Arc<Mutex<HashMap<K, V>>>>>,
+}
 
 impl<K, V> MemoizeCache<K, V> {
-    fn bump() -> MutexGuard<'static, Bump> {
-        static BUMP: LazyLock<Mutex<Bump>> = LazyLock::new(|| Mutex::new(Bump::new()));
-        BUMP.lock().unwrap()
-    }
-
-    fn kek() -> &'static mut str {
-        let kek = Self::bump();
-        let lel = kek.alloc_str("smep");
-        lel
+    fn for_cx(&self, cx: &Cx) -> Arc<Mutex<HashMap<K, V>>> {
+        let mut guard = self.entries.lock().unwrap();
+        if let Some(cache) = guard.get(&cx.id()) {
+            cache.clone()
+        } else {
+            let cache = Arc::new(Mutex::new(HashMap::<K, V>::new()));
+            guard.insert(cx.id(), cache.clone());
+            drop(guard);
+            cache
+        }
     }
 }
 
