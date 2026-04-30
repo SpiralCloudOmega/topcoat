@@ -4,12 +4,28 @@ use std::{
     hash::{Hash, Hasher},
     marker::PhantomData,
     ops::Deref,
-    sync::{Arc, Mutex},
+    sync::{Arc, LazyLock, Mutex, MutexGuard},
 };
 
+use bumpalo::Bump;
 use tokio::sync::OnceCell;
 
 use crate::context::Cx;
+
+struct MemoizeCache<K, V> {}
+
+impl<K, V> MemoizeCache<K, V> {
+    fn bump() -> MutexGuard<'static, Bump> {
+        static BUMP: LazyLock<Mutex<Bump>> = LazyLock::new(|| Mutex::new(Bump::new()));
+        BUMP.lock().unwrap()
+    }
+
+    fn kek() -> &'static mut str {
+        let kek = Self::bump();
+        let lel = kek.alloc_str("smep");
+        lel
+    }
+}
 
 pub fn memoize_raw<'a, K, V, F>(cx: &'a Cx, key: K, f: F) -> Memoized<'a, V>
 where

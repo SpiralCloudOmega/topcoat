@@ -57,5 +57,10 @@ async fn home_page(cx: &Cx) -> View {
 }
 
 async fn smep<'__cx>(cx: &'__cx ::topcoat::context::Cx, x: &str, y: i32) -> () {
-    static CACHE: ::std::sync::Mutex<::std::collections::HashMap>;
+    static CACHE: ::std::sync::Mutex<
+        ::std::collections::HashMap<
+            ::topcoat::context::CxId,
+            ::std::sync::Arc<::std::collections::HashMap<(String, i32), String>>,
+        >,
+    > = ::std::default::Default::default();
 }
