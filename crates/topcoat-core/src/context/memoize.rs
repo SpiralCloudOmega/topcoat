@@ -126,6 +126,7 @@ impl std::fmt::Debug for MemoizeCache {
 #[derive(Hash)]
 pub struct MemoizeKey<T>(T);
 
+#[doc(hidden)]
 pub trait ToOwnedKey {
     type Owned;
     fn to_owned_key(&self) -> Self::Owned;
