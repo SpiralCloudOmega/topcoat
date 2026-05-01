@@ -1,5 +1,6 @@
 use std::{
     any::{Any, TypeId},
+    collections::hash_map::RandomState,
     future::Future,
     hash::Hash,
     marker::PhantomData,
@@ -39,7 +40,6 @@ impl<'a, T> Deref for Memoized<'a, T> {
 
 #[doc(hidden)]
 pub struct MemoizeCache {
-    // TODO: HashDoS
     entries: Mutex<HashMap<TypeId, Box<dyn Any + Send + Sync>>>,
 }
 
@@ -60,10 +60,14 @@ impl MemoizeCache {
     {
         let mut guard = self.entries.lock().unwrap();
         let cache = guard.entry(TypeId::of::<F>()).or_insert_with(|| {
-            Box::new(HashMap::<<MemoizeKey<Q> as ToOwnedKey>::Owned, Arc<V>>::new())
+            Box::new(HashMap::<
+                <MemoizeKey<Q> as ToOwnedKey>::Owned,
+                Arc<V>,
+                RandomState,
+            >::with_hasher(RandomState::new()))
         });
         let cache = cache
-            .downcast_mut::<HashMap<<MemoizeKey<Q> as ToOwnedKey>::Owned, Arc<V>>>()
+            .downcast_mut::<HashMap<<MemoizeKey<Q> as ToOwnedKey>::Owned, Arc<V>, RandomState>>()
             .unwrap();
 
         if let Some(value) = cache.get(&MemoizeKey(borrowed_key)) {
@@ -96,14 +100,17 @@ impl MemoizeCache {
                 Box::new(HashMap::<
                     <MemoizeKey<Q> as ToOwnedKey>::Owned,
                     Arc<OnceCell<Arc<V>>>,
-                >::new())
+                    RandomState,
+                >::with_hasher(RandomState::new()))
             });
-            let cache = cache
-                .downcast_mut::<HashMap<
-                    <MemoizeKey<Q> as ToOwnedKey>::Owned,
-                    Arc<OnceCell<Arc<V>>>,
-                >>()
-                .unwrap();
+            let cache =
+                cache
+                    .downcast_mut::<HashMap<
+                        <MemoizeKey<Q> as ToOwnedKey>::Owned,
+                        Arc<OnceCell<Arc<V>>>,
+                        RandomState,
+                    >>()
+                    .unwrap();
 
             if let Some(cell) = cache.get(&MemoizeKey(borrowed_key)) {
                 cell.clone()
