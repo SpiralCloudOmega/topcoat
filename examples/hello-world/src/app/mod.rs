@@ -1,5 +1,6 @@
 mod _group;
 mod about;
+mod posts;
 
 use topcoat::{
     context::{Cx, memoize, uri},
