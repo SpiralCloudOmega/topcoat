@@ -72,14 +72,13 @@ app/
 
 Both `pricing` and `getting_started` are top-level routes, but they can have different layouts via their respective group `mod.rs` files.
 
-You can also override a group to behave as a static segment with `segment!`:
+You can also turn a regular module into a group with `segment!(_)`:
 
 ```rust
-// src/app/_group/mod.rs
-topcoat::router::segment!(kind = Static);
+// src/app/marketing/mod.rs
+topcoat::router::segment!(_);
+// `marketing` now contributes no URL segment.
 ```
-
-This turns it into a regular path segment (the `_` prefix is stripped and the name is kebab-cased).
 
 The `_`-prefix can also act as a naming convention for route-specific utilities. For example, a `_components` module for shared UI fragments:
 
@@ -94,59 +93,102 @@ app/
   contact.rs          # /contact
 ```
 
+## Renaming a static segment
+
+`segment!("name")` overrides the URL with the given literal (used as-is, no kebab-casing) and forces the kind to `Static`.
+
+```rust
+// src/app/blog_post.rs
+topcoat::router::segment!("articles");
+// Route: /articles instead of /blog-post
+```
+
+This also works to flip a `_`-prefixed group into a regular static segment:
+
+```rust
+// src/app/_internal/mod.rs
+topcoat::router::segment!("internal");
+// Route: /internal instead of being a hidden group
+```
+
 ## Dynamic segments (params)
 
-Use `segment!` to mark a module as a dynamic parameter:
+`segment!(name)` marks the module as a dynamic parameter and generates an accessor function with the same name.
 
 ```rust
 // src/app/users/id/mod.rs
-topcoat::router::segment!(kind = Param);
+topcoat::router::segment!(id);
 ```
 
-This maps the `app::users::id` module to `/users/{id}`. Any submodule inherits the param segment:
+This maps the `app::users::id` module to `/users/{id}` and generates an accessor:
+
+```rust
+fn id(cx: &Cx) -> &str { /* … */ }
+```
+
+You can read the captured value from any handler in this module or its submodules:
+
+```rust
+#[page]
+async fn user_profile(cx: &Cx) -> View {
+    view! { <h1>"User: " (id(cx)) </h1> }
+}
+```
+
+Any submodule inherits the param segment:
 
 | Module | Route |
 |---|---|
 | `app::users::id` | `/users/{id}` |
 | `app::users::id::settings` | `/users/{id}/settings` |
 
+### Typed params
+
+Append `: Type` to parse the captured string into a custom type. The type must implement `FromStr`.
+
+```rust
+// src/app/posts/id/mod.rs
+topcoat::router::segment!(id: uuid::Uuid);
+```
+
+The accessor now returns the parsed value:
+
+```rust
+fn id(cx: &Cx) -> uuid::Uuid { /* … */ }
+```
+
+### Renaming the accessor
+
+If the URL param name and the accessor name should differ, append `as <fn_name>`:
+
+```rust
+// src/app/posts/id/mod.rs
+topcoat::router::segment!(id: uuid::Uuid as post_id);
+```
+
+This still routes as `/posts/{id}` but the accessor is `post_id(cx) -> uuid::Uuid`.
+
 ## Catch-all segments
 
-For routes that match any number of trailing path segments:
+`segment!(..name)` matches all remaining path segments:
 
 ```rust
 // src/app/docs/path/mod.rs
-topcoat::router::segment!(kind = CatchAll);
+topcoat::router::segment!(..path);
 ```
 
 This maps the `app::docs::path` module to `/docs/{*path}`.
 
-## Renaming segments
+## Segment forms at a glance
 
-If you want the URL segment to differ from the module name:
-
-```rust
-// src/app/blog_post.rs
-topcoat::router::segment!(rename = "articles");
-// Route: /articles instead of /blog-post
-```
-
-You can combine `kind` and `rename`:
-
-```rust
-// src/app/slug.rs
-topcoat::router::segment!(kind = Param, rename = "id");
-// Route: /{id}
-```
-
-## Segment kinds
-
-| Kind | URL format | Use case |
-|---|---|---|
-| `Static` | `/name` | Default for regular modules |
-| `Group` | *(hidden)* | Default for `_`-prefixed modules; layout-only grouping |
-| `Param` | `/{name}` | Dynamic path parameter |
-| `CatchAll` | `/{*name}` | Matches all remaining path segments |
+| Form | Kind | URL | Generated accessor |
+|---|---|---|---|
+| `segment!("blog-posts")` | `Static` | `/blog-posts` | — |
+| `segment!(_)` | `Group` | *(hidden)* | — |
+| `segment!(post_id)` | `Param` | `/{post_id}` | `post_id(cx) -> &str` |
+| `segment!(post_id: uuid::Uuid)` | `Param` | `/{post_id}` | `post_id(cx) -> uuid::Uuid` |
+| `segment!(post_id as my_post_id)` | `Param` | `/{post_id}` | `my_post_id(cx) -> &str` |
+| `segment!(..rest)` | `CatchAll` | `/{*rest}` | — |
 
 ## Example: blog with user profiles
 
@@ -159,11 +201,11 @@ src/app/
   users/
     mod.rs                  # page at /users
     id/
-      mod.rs                # page at /users/{id}  (segment! Param)
+      mod.rs                # page at /users/{id}  (segment!(id))
       posts.rs              # page at /users/{id}/posts
   posts/
     mod.rs                  # page at /posts
-    slug.rs                 # page at /posts/{slug}  (segment! Param)
+    slug.rs                 # page at /posts/{slug}  (segment!(slug))
 ```
 
 ```rust
@@ -224,25 +266,25 @@ async fn auth_layout(slot: Slot) -> View {
 
 ```rust
 // src/app/users/id/mod.rs — /users/{id}
-topcoat::router::segment!(kind = Param);
+use topcoat::{context::Cx, router::{page, segment}, view::{View, view}};
 
-use topcoat::{router::page, view::{View, view}};
+segment!(id);
 
 #[page]
-async fn user_profile() -> View {
-    view! { <h1>"User profile"</h1> }
+async fn user_profile(cx: &Cx) -> View {
+    view! { <h1>"User: " (id(cx)) </h1> }
 }
 ```
 
 ```rust
 // src/app/posts/slug.rs — /posts/{slug}
-topcoat::router::segment!(kind = Param);
+use topcoat::{context::Cx, router::{page, segment}, view::{View, view}};
 
-use topcoat::{router::page, view::{View, view}};
+segment!(slug);
 
 #[page]
-async fn post() -> View {
-    view! { <h1>"Blog post"</h1> }
+async fn post(cx: &Cx) -> View {
+    view! { <h1>"Post: " (slug(cx)) </h1> }
 }
 ```
 
@@ -257,10 +299,3 @@ The resulting routes:
 | `/users/{id}/posts` | `app::users::id::posts` |
 | `/posts` | `app::posts` |
 | `/posts/{slug}` | `app::posts::slug` |
-
-
-segment!("blog-posts") // turns the current segment into type "Static" and renames to "blog-posts"
-segment!(_) // turns the current segment into type "Group"
-segment!(post_id) // turns the current segment into type "Param", uses `path_param!(post_id)` to generate an accessor
-segment!(post_id: uuid::Uuid) // turns the current segment into type "Param", uses `path_param!(post_id: uuid::Uuid)` to generate an accessor
-segment!(..rest) // turns the current segment into type "CatchAll"

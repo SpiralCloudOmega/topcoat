@@ -4,20 +4,20 @@ use std::{borrow::Cow, collections::HashMap};
 ///
 /// When using the module router, each module maps to a URL segment. By default,
 /// regular modules are `Static` and `_`-prefixed modules are `Group`. Use
-/// `segment!(kind = ...)` in a module to override the default.
+/// `segment!(...)` in a module to override the default.
 ///
-/// | Kind       | URL format   | Use case                                       |
-/// |------------|--------------|------------------------------------------------|
-/// | `Static`   | `/name`      | Default for regular modules                    |
-/// | `Group`    | *(hidden)*   | Default for `_`-prefixed modules; layout-only  |
-/// | `Param`    | `/{name}`    | Dynamic path parameter                         |
-/// | `CatchAll` | `/{*name}`   | Matches all remaining path segments            |
+/// | Kind       | URL format   | `segment!` form          |
+/// |------------|--------------|--------------------------|
+/// | `Static`   | `/name`      | `segment!("name")`       |
+/// | `Group`    | *(hidden)*   | `segment!(_)`            |
+/// | `Param`    | `/{name}`    | `segment!(name)`         |
+/// | `CatchAll` | `/{*name}`   | `segment!(..name)`       |
 ///
 /// # Examples
 ///
 /// ```rust,ignore
 /// // In a module-router module (e.g. src/app/users/id/mod.rs):
-/// topcoat::router::segment!(kind = Param);
+/// topcoat::router::segment!(id);
 /// // This module now maps to /users/{id}
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
