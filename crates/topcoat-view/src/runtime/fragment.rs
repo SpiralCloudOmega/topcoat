@@ -49,6 +49,24 @@ impl Fragment for String {
     }
 }
 
+impl<T> Fragment for Option<T>
+where
+    T: Fragment,
+{
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) {
+        if let Some(fragment) = self {
+            fragment.fmt(f);
+        }
+    }
+    #[inline]
+    fn fmt_unescaped(&self, f: &mut Formatter<'_>) {
+        if let Some(fragment) = self {
+            fragment.fmt_unescaped(f);
+        }
+    }
+}
+
 impl Fragment for View {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) {
