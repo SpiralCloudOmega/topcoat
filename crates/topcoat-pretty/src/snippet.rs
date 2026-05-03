@@ -1,7 +1,7 @@
 use proc_macro2::Span;
-use syn::{parse::Parse, spanned::Spanned, visit::Visit};
+use syn::{spanned::Spanned, visit::Visit};
 
-use crate::{MARGIN, PrettyPrint};
+use crate::MARGIN;
 
 pub struct MacroSnippet {
     name: String,

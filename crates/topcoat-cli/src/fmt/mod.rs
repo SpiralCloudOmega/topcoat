@@ -84,7 +84,7 @@ impl FmtCommand {
 
 fn format_file(path: &PathBuf, registry: &MacroRegistry) -> Result<(), error::Error> {
     let input = std::fs::read_to_string(path)?;
-    let output = pretty_print_str(&registry, &input)?;
+    let output = pretty_print_str(registry, &input)?;
     std::fs::write(path, output)?;
     Ok(())
 }

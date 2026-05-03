@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use topcoat_pretty::{Macro, MacroRegistry, pretty_print_str};
+use topcoat_pretty::{MacroRegistry, pretty_print_str};
 use topcoat_view::ast::View;
 
 fn diff(expected: &str, actual: &str) -> String {
