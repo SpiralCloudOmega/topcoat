@@ -5,6 +5,7 @@ members = [
     "crates/topcoat-cli",
     "crates/topcoat-core",
     "crates/topcoat-macro",
+    "crates/topcoat-pretty",
     "crates/topcoat-router",
     "crates/topcoat-view",
 
@@ -19,6 +20,7 @@ unsafe_code = "deny"
 topcoat = { path = "crates/topcoat" }
 topcoat-core = { path = "crates/topcoat-core" }
 topcoat-macro = { path = "crates/topcoat-macro" }
+topcoat-pretty = { path = "crates/topcoat-pretty" }
 topcoat-router = { path = "crates/topcoat-router" }
 topcoat-view = { path = "crates/topcoat-view" }
 

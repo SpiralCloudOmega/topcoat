@@ -176,6 +176,8 @@ mod impls {
 
 #[cfg(test)]
 mod tests {
+    use crate::context::AbortStore;
+
     use super::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -190,6 +192,7 @@ mod tests {
             id: super::super::CxId(0),
             parts: http::Request::new(()).into_parts().0,
             cache: MemoizeCache::new(),
+            abort: AbortStore::new(),
         }
     }
 
