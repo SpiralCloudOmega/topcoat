@@ -9,88 +9,61 @@ use std::{
     collections::hash_map::RandomState,
     future::Future,
     hash::Hash,
-    marker::PhantomData,
-    ops::Deref,
     sync::{Arc, Mutex, OnceLock},
 };
 
+use bumpalo::Bump;
 use hashbrown::{Equivalent, HashMap};
+use ouroboros::self_referencing;
 use tokio::sync::OnceCell;
 
 use crate::context::Cx;
-
-/// A handle to a memoized value, scoped to the request context.
-///
-/// `Memoized<T>` is returned by functions annotated with `#[memoize]`. It dereferences to
-/// the underlying value, so it can be used wherever a `&T` is expected. The handle is tied
-/// to the lifetime of the request context and cannot outlive it.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// #[memoize]
-/// fn add(cx: &Cx, x: i32, y: i32) -> i32 {
-///     println!("adding {x} + {y}");
-///     x + y
-/// }
-///
-/// async fn handler(cx: &Cx) {
-///     // Prints "adding 5 + 6" once.
-///     let a = add(cx, 5, 6);
-///     // Returns the cached result without printing.
-///     let b = add(cx, 5, 6);
-///     // Different arguments compute a fresh value.
-///     let c = add(cx, 5, 7);
-///
-///     assert_eq!(*a, 11);
-///     assert_eq!(*b, 11);
-///     assert_eq!(*c, 12);
-/// }
-/// ```
-#[derive(Debug, Clone)]
-pub struct Memoized<'a, T> {
-    inner: Arc<T>,
-    // We artificially limit the lifetime of a memoized value to be the lifetime of the request
-    // context. This is because the `Arc` is an implementation detail of the cache. The user should
-    // not be able to hold on to the memoized value as long as they want. Conceptually, the cache
-    // only lasts as long as the request context. The implementation might change to be more
-    // efficient in the future.
-    lifetime: PhantomData<&'a ()>,
-}
-
-impl<'a, T> Memoized<'a, T> {
-    fn new(inner: Arc<T>) -> Self {
-        Self {
-            inner,
-            lifetime: PhantomData,
-        }
-    }
-}
-
-impl<'a, T> Deref for Memoized<'a, T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
 
 /// Two-level cache: the outer map has one entry per memoized function (keyed by a `TypeId`
 /// derived from the function's closure type), and each inner map (boxed as `dyn Any`) maps
 /// that function's argument tuple to its cached cell.
 #[doc(hidden)]
 pub struct MemoizeCache {
-    entries: Mutex<HashMap<TypeId, Box<dyn Any + Send + Sync>>>,
+    self_referencing: Mutex<MemoizeCacheSelfReferencing>,
+}
+
+#[self_referencing]
+struct MemoizeCacheSelfReferencing {
+    bump: Bump,
+
+    #[borrows(mut bump)]
+    #[covariant]
+    inner: MemoizeCacheInner<'this>,
+}
+
+struct MemoizeCacheInner<'a> {
+    bump: &'a mut Bump,
+    entries: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
+}
+
+impl<'a> MemoizeCacheInner<'a> {
+    fn new(bump: &'a mut Bump) -> Self {
+        Self {
+            bump,
+            entries: HashMap::new(),
+        }
+    }
 }
 
 impl MemoizeCache {
     pub(super) fn new() -> Self {
-        Self {
-            entries: Mutex::new(HashMap::new()),
+        MemoizeCache {
+            self_referencing: Mutex::new(
+                MemoizeCacheSelfReferencingBuilder {
+                    bump: Bump::new(),
+                    inner_builder: |bump| MemoizeCacheInner::new(bump),
+                }
+                .build(),
+            ),
         }
     }
 
-    pub fn memoize<'a, K, P, V, F>(&'a self, cx: &'a Cx, key: K, params: P, f: F) -> Memoized<'a, V>
+    pub fn memoize<'a, K, P, V, F>(&'a self, cx: &'a Cx, key: K, params: P, f: F) -> &'a V
     where
         K: Copy,
         MemoizeKey<K>: Hash + ToOwnedKey + Equivalent<<MemoizeKey<K> as ToOwnedKey>::Owned>,
@@ -98,9 +71,8 @@ impl MemoizeCache {
         V: Send + Sync + 'static,
         F: (FnOnce(&'a Cx, P) -> V) + 'static,
     {
-        let cell = self.cell_for::<F, _, OnceLock<Arc<V>>>(key);
-        let value = cell.get_or_init(|| Arc::new(f(cx, params)));
-        Memoized::new(value.clone())
+        let cell = self.cell_for::<F, _, OnceLock<V>>(key);
+        cell.get_or_init(|| f(cx, params))
     }
 
     pub async fn memoize_async<'a, K, P, V, F, Fut>(
@@ -109,7 +81,7 @@ impl MemoizeCache {
         key: K,
         params: P,
         f: F,
-    ) -> Memoized<'a, V>
+    ) -> &'a V
     where
         K: Copy,
         MemoizeKey<K>: Hash + ToOwnedKey + Equivalent<<MemoizeKey<K> as ToOwnedKey>::Owned>,
@@ -118,18 +90,15 @@ impl MemoizeCache {
         F: (FnOnce(&'a Cx, P) -> Fut) + 'static,
         Fut: Future<Output = V>,
     {
-        let cell = self.cell_for::<F, _, OnceCell<Arc<V>>>(key);
-        let value = cell
-            .get_or_init(|| async { Arc::new(f(cx, params).await) })
-            .await;
-        Memoized::new(value.clone())
+        let cell = self.cell_for::<F, _, OnceCell<V>>(key);
+        cell.get_or_init(|| async { f(cx, params).await }).await
     }
 
     /// Returns the cell that holds the cached value for the given argument key. `Marker` is the
     /// closure type of the memoized function, used as a unique `TypeId` to pick the right inner
     /// map. The cell is wrapped in `Arc` so the caller can drop the outer lock before running
     /// (potentially expensive or async) initialization.
-    fn cell_for<Marker, K, Cell>(&self, key: K) -> Arc<Cell>
+    fn cell_for<'a, Marker, K, Cell>(&'a self, key: K) -> &'a Cell
     where
         Marker: 'static,
         K: Copy,
@@ -137,28 +106,33 @@ impl MemoizeCache {
         <MemoizeKey<K> as ToOwnedKey>::Owned: Hash + Eq + Send + Sync + 'static,
         Cell: Default + Send + Sync + 'static,
     {
-        let mut guard = self.entries.lock().unwrap();
-        let cache = guard.entry(TypeId::of::<Marker>()).or_insert_with(|| {
-            Box::new(HashMap::<
-                <MemoizeKey<K> as ToOwnedKey>::Owned,
-                Arc<Cell>,
-                RandomState,
-            >::with_hasher(RandomState::new()))
-        });
-        let cache = cache
-            .downcast_mut::<HashMap<<MemoizeKey<K> as ToOwnedKey>::Owned, Arc<Cell>, RandomState>>()
-            .unwrap();
+        let mut guard = self.self_referencing.lock().unwrap();
+        guard.with_inner_mut(|inner: &'a mut MemoizeCacheInner<'a>| {
+            let bump = inner.bump;
+            let cache = inner
+                .entries
+                .entry(TypeId::of::<Marker>())
+                .or_insert_with(|| {
+                    Box::new(HashMap::<
+                        <MemoizeKey<K> as ToOwnedKey>::Owned,
+                        Cell,
+                        RandomState,
+                    >::with_hasher(RandomState::new()))
+                });
+            let cache = cache
+                .downcast_mut::<HashMap<<MemoizeKey<K> as ToOwnedKey>::Owned, Cell, RandomState>>()
+                .unwrap();
 
-        // Look up using the borrowed key via `Equivalent` to avoid cloning the arguments on
-        // cache hits; only clone into an owned key when inserting.
-        if let Some(cell) = cache.get(&MemoizeKey(key)) {
-            cell.clone()
-        } else {
-            let cell = Arc::new(Cell::default());
-            let key_owned = MemoizeKey(key).to_owned_key();
-            cache.insert(key_owned, cell.clone());
-            cell
-        }
+            // Look up using the borrowed key via `Equivalent` to avoid cloning the arguments on
+            // cache hits; only clone into an owned key when inserting.
+            if let Some(cell) = cache.get(&MemoizeKey(key)) {
+                cell
+            } else {
+                let key_owned = MemoizeKey(key).to_owned_key();
+                cache.insert(key_owned, Cell::default());
+                cache.get(&MemoizeKey(key)).expect("just inserted above")
+            }
+        })
     }
 }
 

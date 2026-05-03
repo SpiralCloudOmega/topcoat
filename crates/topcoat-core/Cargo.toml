@@ -4,9 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bumpalo.workspace = true
+bumpalo = { workspace = true, features = ["boxed"] }
 hashbrown.workspace = true
 http.workspace = true
+ouroboros.workspace = true
 tokio = { workspace = true, features = ["sync"] }
 
 [dev-dependencies]

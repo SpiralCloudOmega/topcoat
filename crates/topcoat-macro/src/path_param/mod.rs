@@ -56,6 +56,7 @@ impl PathParam {
 impl ToTokens for PathParam {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let item = &self.1.item;
+        let vis = &item.vis;
         let ident = &item.ident;
         let inner_ty = &self.1.inner_ty;
         let name_string = ident.to_string().to_snake_case();
@@ -76,10 +77,10 @@ impl ToTokens for PathParam {
 
         let of_fn = if is_str_ref(inner_ty) {
             quote! {
-                fn of(cx: &::topcoat::context::Cx) -> &str {
+                #vis fn of(cx: &::topcoat::context::Cx) -> #ident<'_> {
                     for (key, value) in ::topcoat::router::raw_path_params(cx) {
                         if key == #name_string {
-                            return value;
+                            return #ident(value);
                         }
                     }
                     panic!("path parameter \"{}\" was not found in request path", #name_string);
@@ -87,12 +88,12 @@ impl ToTokens for PathParam {
             }
         } else {
             quote! {
-                fn of(cx: &::topcoat::context::Cx) -> ::topcoat::context::Memoized<'_, ::core::result::Result<#inner_ty, <#inner_ty as ::core::str::FromStr>::Err>> {
+                #vis fn of(cx: &::topcoat::context::Cx) -> ::topcoat::context::Memoized<'_, ::core::result::Result<Self, <#inner_ty as ::core::str::FromStr>::Err>> {
                     #[::topcoat::context::memoize]
-                    fn parse(cx: &::topcoat::context::Cx) -> ::core::result::Result<#inner_ty, <#inner_ty as ::core::str::FromStr>::Err> {
+                    fn parse(cx: &::topcoat::context::Cx) -> ::core::result::Result<#ident, <#inner_ty as ::core::str::FromStr>::Err> {
                         for (key, value) in ::topcoat::router::raw_path_params(cx) {
                             if key == #name_string {
-                                return ::core::str::FromStr::from_str(value);
+                                return ::core::str::FromStr::from_str(value).map(#ident);
                             }
                         }
                         panic!("path parameter \"{}\" was not found in request path", #name_string);
@@ -107,6 +108,14 @@ impl ToTokens for PathParam {
 
             impl #impl_generics #ident #ty_generics #where_clause {
                 #of_fn
+            }
+
+            impl #ty_generics ::core::ops::Deref for #ident #ty_generics {
+                type Target = #inner_ty;
+
+                fn deref(&self) -> &Self::Target {
+                    &self.0
+                }
             }
 
             ::topcoat::router::segment!(kind = Param, rename = #name_string);
