@@ -54,6 +54,16 @@ async fn about() -> View {
 }
 ```
 
+## Renaming a static segment
+
+`segment!(rename = "name")` overrides the URL with the given literal (used as-is, no kebab-casing).
+
+```rust
+// src/app/blog_post.rs
+topcoat::router::segment!(rename = "articles");
+// Route: /articles instead of /blog-post
+```
+
 ## Groups
 
 Modules prefixed with `_` are **groups**. They organize code and can hold shared layouts, but they don't add a path segment to the URL.
@@ -100,14 +110,3 @@ app/
   about.rs            # /about — can use app::_components::header
   contact.rs          # /contact
 ```
-
-## Renaming a static segment
-
-`segment!(rename = "name")` overrides the URL with the given literal (used as-is, no kebab-casing).
-
-```rust
-// src/app/blog_post.rs
-topcoat::router::segment!(rename = "articles");
-// Route: /articles instead of /blog-post
-```
-
