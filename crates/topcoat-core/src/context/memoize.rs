@@ -20,14 +20,14 @@ use crate::context::Cx;
 #[doc(hidden)]
 pub struct MemoizeCache {
     entries: Mutex<HashMap<TypeId, Box<dyn Any + Send + Sync>>>,
-    values: Box<boxcar::Vec<Box<dyn Any + Send + Sync + 'static>>>,
+    values: boxcar::Vec<Box<dyn Any + Send + Sync + 'static>>,
 }
 
 impl MemoizeCache {
     pub(super) fn new() -> Self {
         Self {
             entries: Mutex::new(HashMap::new()),
-            values: Box::new(boxcar::Vec::new()),
+            values: boxcar::Vec::new(),
         }
     }
 
