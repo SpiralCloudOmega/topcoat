@@ -31,9 +31,12 @@ fn diff(expected: &str, actual: &str) -> String {
     output
 }
 
+fn registry() -> Registry {
+    Registry::one::<syn::Ident>("test")
+}
+
 fn assert_format(input: &str, expected: &str) {
-    let registry = Registry::one::<View>("view");
-    let result = pretty_print_str(&registry, input).unwrap_or_else(|errors| {
+    let result = pretty_print_str(&registry(), input).unwrap_or_else(|errors| {
         panic!(
             "failed to parse input:\n{input}\nerror: {}",
             errors.first().unwrap()

@@ -37,7 +37,7 @@ pub fn pretty_print_str(registry: &Registry, input: &str) -> Result<String, Vec<
     let mut replacements = Vec::new();
 
     for snippet in snippets {
-        let Some(replacement) = registry.pretty_print_macro_snippet(&snippet) else {
+        let Some(replacement) = registry.pretty_print_macro(&snippet) else {
             continue;
         };
         match replacement {

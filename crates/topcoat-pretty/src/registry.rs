@@ -55,10 +55,7 @@ impl Registry {
         self
     }
 
-    pub fn pretty_print_macro_snippet(
-        &self,
-        snippet: &MacroSnippet,
-    ) -> Option<syn::Result<String>> {
+    pub fn pretty_print_macro(&self, snippet: &MacroSnippet) -> Option<syn::Result<String>> {
         self.macro_fns
             .get(snippet.name())
             .map(|pretty_print_fn| pretty_print_fn(self, snippet))
