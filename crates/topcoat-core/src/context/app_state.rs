@@ -80,6 +80,12 @@ impl AppState {
         }
     }
 
+    /// Returns a reference to the registered value of type `T`, or `None` if
+    /// no such value has been registered.
+    ///
+    /// This is an internal lookup used by [`app_state`]. Within a request,
+    /// prefer the [`app_state`] free function rather than calling this method
+    /// directly.
     fn get<T>(&self) -> Option<&T>
     where
         T: Any + Send + Sync,
