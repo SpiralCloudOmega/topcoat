@@ -1,3 +1,4 @@
+mod asset;
 mod dev;
 mod fmt;
 
@@ -16,6 +17,8 @@ enum Command {
     Fmt(fmt::FmtCommand),
     /// Start a development server
     Dev(dev::DevCommand),
+    /// Inspect assets embedded in the binary
+    Asset(asset::AssetCommand),
 }
 
 pub async fn run() {
@@ -23,5 +26,6 @@ pub async fn run() {
     match cli.command {
         Command::Fmt(cmd) => cmd.run().await,
         Command::Dev(cmd) => cmd.run().await,
+        Command::Asset(cmd) => cmd.run().await,
     }
 }
