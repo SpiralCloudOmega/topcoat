@@ -1,12 +1,12 @@
-use std::{
-    io::Read,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use memchr::memmem;
 use serde::{Deserialize, Serialize};
 
-use crate::hash;
+use crate::{
+    cursor::{ConstReader, ConstWriter},
+    hash,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -38,12 +38,9 @@ impl Asset {
         source_file: &str,
     ) -> [u8; ENCODED_ASSET_SIZE] {
         let mut out = [0u8; ENCODED_ASSET_SIZE];
-        let mut w = ConstWriter {
-            buf: &mut out,
-            pos: 0,
-        };
+        let mut w = ConstWriter::new(&mut out);
         w.write_bytes(&asset_prefix());
-        w.write_bytes(&id.0.to_le_bytes());
+        w.write_u64_le(id.0);
         w.write_str(path);
         w.write_str(crate_name);
         w.write_str(manifest_dir);
@@ -52,18 +49,14 @@ impl Asset {
     }
 
     pub fn decode(buffer: &[u8]) -> Option<Self> {
-        let mut cur = buffer.get(asset_prefix().len()..)?;
-
-        let mut id_buf = [0u8; 8];
-        cur.read_exact(&mut id_buf).ok()?;
-        let id = AssetId(u64::from_le_bytes(id_buf));
-
+        let mut r = ConstReader::new(buffer);
+        r.skip(asset_prefix().len())?;
         Some(Self {
-            id,
-            path: read_str(&mut cur)?,
-            crate_name: read_str(&mut cur)?,
-            manifest_dir: read_str(&mut cur)?,
-            source_file: read_str(&mut cur)?,
+            id: AssetId(r.read_u64_le()?),
+            path: r.read_str()?.to_owned(),
+            crate_name: r.read_str()?.to_owned(),
+            manifest_dir: r.read_str()?.to_owned(),
+            source_file: r.read_str()?.to_owned(),
         })
     }
 
@@ -99,37 +92,6 @@ impl Asset {
         let parent = source.parent().unwrap_or(Path::new(""));
         parent.join(&self.path)
     }
-}
-
-struct ConstWriter<'a> {
-    buf: &'a mut [u8],
-    pos: usize,
-}
-
-impl ConstWriter<'_> {
-    const fn write_bytes(&mut self, bytes: &[u8]) {
-        let mut i = 0;
-        while i < bytes.len() {
-            self.buf[self.pos] = bytes[i];
-            self.pos += 1;
-            i += 1;
-        }
-    }
-
-    const fn write_str(&mut self, s: &str) {
-        self.write_bytes(&(s.len() as u16).to_le_bytes());
-        self.write_bytes(s.as_bytes());
-    }
-}
-
-fn read_str(cur: &mut &[u8]) -> Option<String> {
-    let mut len_buf = [0u8; 2];
-    cur.read_exact(&mut len_buf).ok()?;
-    let len = u16::from_le_bytes(len_buf) as usize;
-    let bytes = cur.get(..len)?;
-    let s = std::str::from_utf8(bytes).ok()?.to_owned();
-    *cur = &cur[len..];
-    Some(s)
 }
 
 #[macro_export]
