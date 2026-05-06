@@ -51,8 +51,8 @@ async fn list(args: ListArgs) {
         }
     };
 
-    for asset in topcoat_asset::find_assets(&bytes) {
-        println!("{}", asset.path());
+    for asset in topcoat_asset::Asset::find_in_binary(&bytes) {
+        println!("{:?}", asset.resolved_path());
     }
 }
 
