@@ -1,5 +1,10 @@
+pub const FNV1A_OFFSET: u64 = 0xcbf29ce484222325;
+
 pub const fn fnv1a(bytes: &[u8]) -> u64 {
-    let mut h: u64 = 0xcbf29ce484222325;
+    fnv1a_continue(FNV1A_OFFSET, bytes)
+}
+
+pub const fn fnv1a_continue(mut h: u64, bytes: &[u8]) -> u64 {
     let mut i = 0;
     while i < bytes.len() {
         h ^= bytes[i] as u64;

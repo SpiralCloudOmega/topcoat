@@ -13,8 +13,13 @@ use crate::{
 pub struct AssetId(u64);
 
 impl AssetId {
-    pub const fn from_path(path: &str) -> Self {
-        Self(hash::fnv1a(path.as_bytes()))
+    pub const fn new(crate_name: &str, source_file: &str, path: &str) -> Self {
+        let mut h = hash::fnv1a(crate_name.as_bytes());
+        h = hash::fnv1a_continue(h, b"\0");
+        h = hash::fnv1a_continue(h, source_file.as_bytes());
+        h = hash::fnv1a_continue(h, b"\0");
+        h = hash::fnv1a_continue(h, path.as_bytes());
+        Self(h)
     }
 }
 
@@ -150,10 +155,10 @@ fn normalize(path: &Path) -> PathBuf {
 macro_rules! asset {
     ($path:expr) => {{
         const PATH: &str = $path;
-        const ID: $crate::AssetId = $crate::AssetId::from_path(PATH);
         const CRATE_NAME: &str = env!("CARGO_CRATE_NAME");
         const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
         const SOURCE_FILE: &str = file!();
+        const ID: $crate::AssetId = $crate::AssetId::new(CRATE_NAME, SOURCE_FILE, PATH);
 
         #[used]
         pub static ENCODED_ASSET: [u8; $crate::ENCODED_ASSET_SIZE] =
