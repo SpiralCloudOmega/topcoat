@@ -8,7 +8,7 @@ mod serve;
 
 #[cfg(feature = "asset")]
 pub mod asset {
-    pub use topcoat_asset;
+    pub use topcoat_asset::*;
 }
 
 pub mod context {
