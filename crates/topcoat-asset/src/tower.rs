@@ -1,6 +1,5 @@
 use std::{
     collections::HashSet,
-    sync::Arc,
     task::{Context, Poll},
 };
 
@@ -13,7 +12,7 @@ use crate::AssetBundle;
 #[derive(Clone, Debug)]
 pub struct ServeAssetBundle<F = DefaultServeDirFallback> {
     inner: ServeDir<F>,
-    files: Arc<HashSet<String>>,
+    files: HashSet<String>,
 }
 
 impl ServeAssetBundle {
@@ -24,7 +23,7 @@ impl ServeAssetBundle {
             .collect();
         Self {
             inner: ServeDir::new(bundle.dir()),
-            files: Arc::new(files),
+            files,
         }
     }
 }
