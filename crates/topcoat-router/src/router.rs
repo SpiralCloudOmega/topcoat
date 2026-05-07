@@ -7,6 +7,7 @@ use axum::{
     routing::get,
 };
 use http::Request;
+use topcoat_asset::{AssetBundle, ServeAssetBundle};
 use topcoat_core::context::{AppState, MaybeAborted, scope_context};
 
 use crate::{Layout, Layouts, Page, Pages};
@@ -48,6 +49,7 @@ use crate::{Layout, Layouts, Page, Pages};
 pub struct Router {
     pages: Pages,
     layouts: Layouts,
+    assets: AssetBundle,
     state: AppState,
 }
 
@@ -57,6 +59,7 @@ impl Router {
         Self {
             pages: Pages::new(),
             layouts: Layouts::new(),
+            assets: AssetBundle::empty(),
             state: AppState::new(),
         }
     }
@@ -98,6 +101,11 @@ impl Router {
         for layout in inventory::iter::<Layout>().cloned() {
             self = self.layout(layout);
         }
+        self
+    }
+
+    pub fn assets(mut self, assets: AssetBundle) -> Self {
+        self.assets = assets;
         self
     }
 
@@ -143,6 +151,8 @@ impl Router {
 impl From<Router> for axum::Router {
     fn from(value: Router) -> Self {
         let mut result = axum::Router::<Arc<AppState>>::new();
+
+        result = result.nest_service("/_topcoat/assets", ServeAssetBundle::new(&value.assets));
 
         for page in value.pages {
             let mut layouts: Vec<_> = value.layouts.for_path(page.path()).cloned().collect();

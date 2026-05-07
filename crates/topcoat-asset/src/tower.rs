@@ -52,6 +52,7 @@ where
 
     fn call(&mut self, mut req: Request<B>) -> Self::Future {
         let path = req.uri().path().trim_start_matches('/');
+
         if !self.files.contains(path) {
             // Force ServeDir's invalid-path branch (404 or fallback) without
             // hitting the disk by replacing the path with a parent traversal.
