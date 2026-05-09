@@ -3,6 +3,7 @@ use quote::{ToTokens, quote};
 use syn::{
     FnArg, ItemFn, Pat, ReturnType,
     parse::{Parse, ParseStream},
+    parse_quote,
     spanned::Spanned,
 };
 
@@ -33,57 +34,66 @@ impl Parse for ComponentItem {
                 "components must have a return type",
             ));
         }
+        for arg in &item.sig.inputs {
+            match arg {
+                FnArg::Receiver(r) => {
+                    return Err(syn::Error::new_spanned(
+                        r,
+                        "component functions cannot take a `self` receiver",
+                    ));
+                }
+                FnArg::Typed(pat_type) => match &*pat_type.pat {
+                    Pat::Ident(_) => {}
+                    _ => {
+                        return Err(syn::Error::new_spanned(
+                            pat_type,
+                            "component function arguments must be identifier patterns",
+                        ));
+                    }
+                },
+            }
+        }
         Ok(Self { item })
     }
 }
 
 impl ToTokens for ComponentItem {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let item = &self.item;
+        let mut item = self.item.clone();
+        let generics = item.sig.generics.clone();
+        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+        item.sig.generics.params.insert(0, parse_quote! { '__cx });
+        item.sig
+            .inputs
+            .insert(0, parse_quote! { __cx: &'__cx ::topcoat::context::Cx });
         let vis = &item.vis;
         let ident = &item.sig.ident;
         let ReturnType::Type(_, return_ty) = &item.sig.output else {
-            panic!("components must have a return type");
+            unreachable!("validated in Parse");
         };
 
-        let generics = item.sig.generics.clone();
-        // generics.params.insert(0, syn::parse_quote!('__implicit));
-        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
-        let mut has_cx = false;
         let mut fields = Vec::new();
         let mut args = Vec::new();
 
         for input in self.item.sig.inputs.iter() {
-            match input {
-                FnArg::Receiver(_) => panic!("component macro must not be used on methods"),
-                FnArg::Typed(pat_type) => {
-                    let ty = &pat_type.ty;
-                    match &*pat_type.pat {
-                        Pat::Ident(pi) if pi.ident == "cx" => {
-                            has_cx = true;
-                            args.push(quote! { cx });
-                        }
-                        Pat::Ident(pi) => {
-                            fields.push(quote! { #pi: #ty });
-                            args.push(quote! { self.#pi });
-                        }
-                        _ => panic!("function args must have an identifier"),
-                    }
-                }
+            let FnArg::Typed(pat_type) = input else {
+                unreachable!("validated in Parse");
+            };
+            let Pat::Ident(pi) = &*pat_type.pat else {
+                unreachable!("validated in Parse");
+            };
+            let ty = &pat_type.ty;
+            if pi.ident == "cx" {
+                args.push(quote! { cx });
+            } else {
+                fields.push(quote! { #pi: #ty });
+                args.push(quote! { self.#pi });
             }
         }
 
-        let body = if has_cx {
-            quote! {
-                #item
-                ::topcoat::context::with_context(async |cx| #ident(#(#args),*).await).await
-            }
-        } else {
-            quote! {
-                #item
-                #ident(#(#args),*).await
-            }
+        let body = quote! {
+            #item
+            #ident(cx, #(#args),*).await
         };
 
         quote! {
@@ -95,7 +105,7 @@ impl ToTokens for ComponentItem {
             impl #impl_generics ::topcoat::component::Component for #ident #ty_generics #where_clause {
                 type Error = <#return_ty as ::topcoat::internal::ResultExt>::E;
 
-                async fn render(self) -> #return_ty {
+                async fn render(self, cx: &::topcoat::context::Cx) -> #return_ty {
                     #body
                 }
             }

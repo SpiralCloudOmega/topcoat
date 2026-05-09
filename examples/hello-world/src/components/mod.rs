@@ -1,6 +1,21 @@
-use topcoat::{component, router::Result, view, view::View};
+use topcoat::{
+    component::component,
+    context::{Cx, app_state},
+    router::{Result, uri},
+    view::{View, view},
+};
 
 #[component]
-async fn button(cx: Cx<'_>, id: &str, child: View) -> Result {
+async fn button<'a>(id: &'a str, child: View) -> Result {
     view! { <button id=(id) class="button">(child)</button> }
+}
+
+#[component]
+pub async fn app_and_request_state(cx: &Cx, child: View) -> Result {
+    view! {
+        "current page: "
+        (uri(cx).to_string())
+        ", app state: "
+        (app_state::<i32>(cx))
+    }
 }

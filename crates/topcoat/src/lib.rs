@@ -19,12 +19,17 @@ pub mod context {
 
 #[cfg(feature = "view")]
 pub mod component {
+    use topcoat_core::context::Cx;
+
     pub use topcoat_macro::component;
 
     pub trait Component {
         type Error;
 
-        fn render(self) -> impl Future<Output = Result<crate::view::View, Self::Error>> + Send;
+        fn render(
+            self,
+            cx: &Cx,
+        ) -> impl Future<Output = Result<crate::view::View, Self::Error>> + Send;
     }
 }
 

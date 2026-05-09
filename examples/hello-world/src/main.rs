@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use topcoat::asset::{AssetBundle, asset};
 
 mod app;
+mod components;
 
 #[tokio::main]
 async fn main() {

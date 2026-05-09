@@ -2,10 +2,12 @@ mod _group;
 mod posts;
 
 use topcoat::{
-    context::{Cx, app_state, memoize},
-    router::{Result, Slot, layout, page, uri},
+    context::{Cx, memoize},
+    router::{Result, Slot, layout, page},
     view::view,
 };
+
+use crate::components::app_and_request_state;
 
 pub fn router() -> topcoat::router::Router {
     topcoat::router::module_router!()
@@ -44,10 +46,7 @@ async fn layout(cx: &Cx, slot: Slot<'_>) -> Result {
                 </nav>
                 <hr>
 
-                "current page: "
-                (uri(cx).to_string())
-                ", app state: "
-                (app_state::<i32>(cx))
+                [app_and_request_state /]
 
                 <div>(slot.await?)</div>
             </body>

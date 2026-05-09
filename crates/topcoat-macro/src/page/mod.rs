@@ -3,6 +3,7 @@ use quote::{ToTokens, quote};
 use syn::{
     FnArg, Ident, ItemFn, LitStr, Pat,
     parse::{Parse, ParseStream},
+    parse_quote,
 };
 
 pub struct PageAttr {
@@ -62,14 +63,18 @@ impl Page {
 impl ToTokens for Page {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let attr = &self.0;
-        let item = &self.1.item;
+        let mut item = self.1.item.clone();
+        item.sig.generics.params.insert(0, parse_quote! { '__cx });
+        item.sig
+            .inputs
+            .insert(0, parse_quote! { __cx: &'__cx ::topcoat::context::Cx });
         let ident = &item.sig.ident;
         let args = &self.1.args;
 
         let render = quote! {
             |cx| {
                 #item
-                Box::pin(#ident(#(#args),*))
+                Box::pin(#ident(cx, #(#args),*))
             }
         };
 
