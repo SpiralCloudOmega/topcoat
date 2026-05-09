@@ -6,7 +6,7 @@ use topcoat::{
 };
 
 #[component]
-async fn button<'a>(id: &'a str, child: View) -> Result {
+async fn button(id: &str, child: View) -> Result {
     view! { <button id=(id) class="button">(child)</button> }
 }
 

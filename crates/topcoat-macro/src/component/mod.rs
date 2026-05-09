@@ -1,11 +1,33 @@
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
 use syn::{
-    FnArg, ItemFn, Pat, ReturnType,
+    FnArg, ItemFn, Lifetime, Pat, ReturnType, TypeReference,
     parse::{Parse, ParseStream},
     parse_quote,
     spanned::Spanned,
+    visit_mut::{self, VisitMut},
 };
+
+struct ImplicitLifetimeVisitor {
+    used: bool,
+}
+
+impl VisitMut for ImplicitLifetimeVisitor {
+    fn visit_lifetime_mut(&mut self, lt: &mut Lifetime) {
+        if lt.ident == "_" {
+            *lt = parse_quote! { '__implicit };
+            self.used = true;
+        }
+    }
+
+    fn visit_type_reference_mut(&mut self, tr: &mut TypeReference) {
+        if tr.lifetime.is_none() {
+            tr.lifetime = Some(parse_quote! { '__implicit });
+            self.used = true;
+        }
+        visit_mut::visit_type_reference_mut(self, tr);
+    }
+}
 
 pub struct ComponentAttr {}
 
@@ -60,8 +82,7 @@ impl Parse for ComponentItem {
 impl ToTokens for ComponentItem {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let mut item = self.item.clone();
-        let generics = item.sig.generics.clone();
-        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+        let mut generics = item.sig.generics.clone();
         item.sig.generics.params.insert(0, parse_quote! { '__cx });
         item.sig
             .inputs
@@ -74,6 +95,7 @@ impl ToTokens for ComponentItem {
 
         let mut fields = Vec::new();
         let mut args = Vec::new();
+        let mut visitor = ImplicitLifetimeVisitor { used: false };
 
         for input in self.item.sig.inputs.iter() {
             let FnArg::Typed(pat_type) = input else {
@@ -82,14 +104,20 @@ impl ToTokens for ComponentItem {
             let Pat::Ident(pi) = &*pat_type.pat else {
                 unreachable!("validated in Parse");
             };
-            let ty = &pat_type.ty;
             if pi.ident == "cx" {
                 args.push(quote! { cx });
             } else {
+                let mut ty = (*pat_type.ty).clone();
+                visitor.visit_type_mut(&mut ty);
                 fields.push(quote! { #pi: #ty });
                 args.push(quote! { self.#pi });
             }
         }
+
+        if visitor.used {
+            generics.params.insert(0, parse_quote! { '__implicit });
+        }
+        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         let body = quote! {
             #item
