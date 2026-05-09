@@ -1,8 +1,14 @@
-//! Process-wide values shared across every request.
+//! Type-keyed values made available through the request context.
 //!
-//! [`AppState`] is a type-keyed map of values registered once at startup and
-//! made available to every request handled by the router. Within a request,
-//! [`app_state`] retrieves a reference to a registered value by its type.
+//! [`State`] is a type-keyed map of values, looked up by their [`TypeId`].
+//! Each [`Cx`] carries two of them:
+//!
+//! - **App state** is registered once at startup and shared across every
+//!   request handled by the router. Within a request, [`app_state`] retrieves
+//!   a reference to a registered value by its type.
+//! - **Request state** is scoped to a single request and dropped when the
+//!   request ends. Within a request, [`request_state`] retrieves a reference
+//!   to a registered value by its type.
 
 use std::{
     any::{Any, TypeId},
@@ -37,7 +43,7 @@ pub fn app_state<T>(cx: &Cx) -> &T
 where
     T: Any + Send + Sync,
 {
-    match cx.state.get::<T>() {
+    match cx.app_state.get::<T>() {
         Some(value) => value,
         None => panic!(
             "attempted to access app state of type `{:?}`, but this type was not registered for this context",
@@ -46,18 +52,56 @@ where
     }
 }
 
-/// A type-keyed container of values shared across every request.
+/// Returns a reference to the request state value of type `T` registered on
+/// the current request's [`Cx`].
+///
+/// The lookup is keyed by `T`'s [`TypeId`], so each type may have at most one
+/// registered value per request. Request state lives only for the duration of
+/// the request that owns it; once the request completes, every value is
+/// dropped.
+///
+/// # Panics
+///
+/// Panics if no value of type `T` has been registered on this request's `Cx`.
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// use topcoat::context::{Cx, request_state};
+///
+/// struct RequestId(String);
+///
+/// async fn current_request_id(cx: &Cx) -> &str {
+///     let id: &RequestId = request_state(cx);
+///     &id.0
+/// }
+/// ```
+pub fn request_state<T>(cx: &Cx) -> &T
+where
+    T: Any + Send + Sync,
+{
+    match cx.request_state.get::<T>() {
+        Some(value) => value,
+        None => panic!(
+            "attempted to access request state of type `{:?}`, but this type was not registered for this context",
+            TypeId::of::<T>()
+        ),
+    }
+}
+
+/// A type-keyed container of values.
 ///
 /// Each registered value is stored under its [`TypeId`], so a given type can
-/// only be registered once. Values are retrieved within a request via
-/// [`app_state`].
+/// only be registered once per `State`. Used by [`Cx`] to hold both the
+/// router-wide app state and the per-request request state; values are
+/// retrieved within a request via [`app_state`] or [`request_state`].
 #[derive(Default, Debug)]
-pub struct AppState {
+pub struct State {
     entries: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
 }
 
-impl AppState {
-    /// Creates an empty `AppState`.
+impl State {
+    /// Creates an empty `State`.
     pub fn new() -> Self {
         Self::default()
     }
@@ -100,10 +144,7 @@ impl AppState {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use super::*;
-    use crate::context::{AbortStore, MemoizeCache};
 
     #[derive(Debug, PartialEq)]
     struct Database(&'static str);
@@ -111,19 +152,9 @@ mod tests {
     #[derive(Debug, PartialEq)]
     struct Config(u32);
 
-    fn cx_with(state: AppState) -> Cx {
-        Cx {
-            id: super::super::CxId(0),
-            state: Arc::new(state),
-            parts: http::Request::new(()).into_parts().0,
-            cache: MemoizeCache::new(),
-            abort: AbortStore::new(),
-        }
-    }
-
     #[test]
     fn register_and_get_returns_value() {
-        let mut state = AppState::new();
+        let mut state = State::new();
         state.register(Database("primary"));
 
         assert_eq!(state.get::<Database>(), Some(&Database("primary")));
@@ -131,13 +162,13 @@ mod tests {
 
     #[test]
     fn get_returns_none_for_unregistered_type() {
-        let state = AppState::new();
+        let state = State::new();
         assert_eq!(state.get::<Database>(), None);
     }
 
     #[test]
     fn multiple_types_coexist() {
-        let mut state = AppState::new();
+        let mut state = State::new();
         state.register(Database("primary"));
         state.register(Config(42));
 
@@ -148,16 +179,16 @@ mod tests {
     #[test]
     #[should_panic(expected = "duplicate state entry")]
     fn register_panics_on_duplicate_type() {
-        let mut state = AppState::new();
+        let mut state = State::new();
         state.register(Database("primary"));
         state.register(Database("replica"));
     }
 
     #[test]
     fn app_state_returns_registered_value() {
-        let mut state = AppState::new();
+        let mut state = State::new();
         state.register(Database("primary"));
-        let cx = cx_with(state);
+        let cx = Cx::for_test(state);
 
         let db: &Database = app_state(&cx);
         assert_eq!(db, &Database("primary"));
@@ -166,7 +197,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "attempted to access app state")]
     fn app_state_panics_for_unregistered_type() {
-        let cx = cx_with(AppState::new());
+        let cx = Cx::for_test(State::new());
         let _: &Database = app_state(&cx);
     }
 }

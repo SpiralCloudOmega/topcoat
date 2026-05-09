@@ -2,13 +2,13 @@ use std::{any::Any, sync::Arc};
 
 use axum::{
     body::Body,
-    extract::{RawPathParams, State},
+    extract::{self, RawPathParams},
     response::IntoResponse,
     routing::get,
 };
 use http::Request;
 use topcoat_asset::{AssetBundle, ServeAssetBundle};
-use topcoat_core::context::{AppState, MaybeAborted, scope_context};
+use topcoat_core::context::{MaybeAborted, State, scope_context};
 
 use crate::{Layout, Layouts, Page, Pages};
 
@@ -50,7 +50,7 @@ pub struct Router {
     pages: Pages,
     layouts: Layouts,
     assets: AssetBundle,
-    state: AppState,
+    state: State,
 }
 
 impl Router {
@@ -60,7 +60,7 @@ impl Router {
             pages: Pages::new(),
             layouts: Layouts::new(),
             assets: AssetBundle::empty(),
-            state: AppState::new(),
+            state: State::new(),
         }
     }
 
@@ -150,7 +150,7 @@ impl Router {
 /// path are nested from innermost (most specific) to outermost.
 impl From<Router> for axum::Router {
     fn from(value: Router) -> Self {
-        let mut result = axum::Router::<Arc<AppState>>::new();
+        let mut result = axum::Router::<Arc<State>>::new();
 
         result = result.nest_service("/_topcoat/assets", ServeAssetBundle::new(&value.assets));
 
@@ -161,7 +161,7 @@ impl From<Router> for axum::Router {
             result = result.route(
                 &page.path().to_axum_path(),
                 get(
-                    async move |State(state): State<Arc<AppState>>,
+                    async move |extract::State(state): extract::State<Arc<State>>,
                                 params: RawPathParams,
                                 request: Request<Body>| {
                         let mut render = page.render();

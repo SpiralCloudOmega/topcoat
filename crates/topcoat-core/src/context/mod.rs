@@ -1,12 +1,12 @@
 mod abort;
-mod app_state;
 mod memoize;
 mod parts;
+mod state;
 
 pub use abort::*;
-pub use app_state::*;
 pub use memoize::*;
 pub use parts::*;
+pub use state::*;
 
 use std::sync::{
     Arc,
@@ -29,7 +29,8 @@ impl CxId {
 #[derive(Debug)]
 pub struct Cx {
     id: CxId,
-    state: Arc<AppState>,
+    app_state: Arc<State>,
+    request_state: State,
     parts: Parts,
     cache: MemoizeCache,
     abort: AbortStore,
@@ -43,6 +44,20 @@ impl Cx {
     #[doc(hidden)]
     pub fn cache(&self) -> &MemoizeCache {
         &self.cache
+    }
+
+    /// Builds a `Cx` suitable for unit tests, with the given `app_state` and
+    /// every other field set to a default value.
+    #[cfg(test)]
+    pub(crate) fn for_test(app_state: State) -> Self {
+        Self {
+            id: CxId(0),
+            app_state: Arc::new(app_state),
+            request_state: State::new(),
+            parts: http::Request::new(()).into_parts().0,
+            cache: MemoizeCache::new(),
+            abort: AbortStore::new(),
+        }
     }
 }
 
@@ -59,13 +74,14 @@ task_local! {
 }
 
 pub async fn scope_context<F: Future>(
-    state: Arc<AppState>,
+    app_state: Arc<State>,
     parts: Parts,
     f: F,
 ) -> MaybeAborted<F::Output> {
     let cx = Arc::new(Cx {
         id: CxId::new(),
-        state,
+        app_state,
+        request_state: State::new(),
         parts,
         cache: MemoizeCache::new(),
         abort: AbortStore::new(),
