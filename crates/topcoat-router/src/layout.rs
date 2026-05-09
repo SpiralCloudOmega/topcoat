@@ -88,7 +88,10 @@ impl Layouts {
 mod tests {
     use super::*;
 
-    fn dummy_render(_cx: &Cx, slot: Slot) -> Pin<Box<dyn Future<Output = Result> + Send>> {
+    fn dummy_render<'cx>(
+        _cx: &'cx Cx,
+        slot: Slot<'cx>,
+    ) -> Pin<Box<dyn Future<Output = Result> + Send + 'cx>> {
         Box::pin(slot)
     }
 
