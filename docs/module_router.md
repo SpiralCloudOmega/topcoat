@@ -34,7 +34,7 @@ A `#[page]` defines a route handler. A `#[layout]` wraps all pages in the same m
 ```rust
 // src/app/mod.rs — layout at "/" wraps all pages
 #[layout]
-async fn root_layout(slot: Slot) -> Result {
+async fn root_layout(slot: Slot<'_>) -> Result {
     view! {
         <html><body>(slot.await?)</body></html>
     }

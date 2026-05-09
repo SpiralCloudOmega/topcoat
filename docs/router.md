@@ -47,7 +47,7 @@ use topcoat::{
 };
 
 #[layout("/")]
-async fn root_layout(slot: Slot) -> Result {
+async fn root_layout(slot: Slot<'_>) -> Result {
     view! {
         <!DOCTYPE html>
         <html>
@@ -71,12 +71,12 @@ When multiple layouts match a page, they nest from innermost (most specific path
 
 ```rust
 #[layout("/")]
-async fn root_layout(slot: Slot) -> Result {
+async fn root_layout(slot: Slot<'_>) -> Result {
     view! { <html><body>(slot.await?)</body></html> }
 }
 
 #[layout("/settings")]
-async fn settings_layout(slot: Slot) -> Result {
+async fn settings_layout(slot: Slot<'_>) -> Result {
     view! {
         <div class="settings-shell">
             <nav>"Settings nav"</nav>
@@ -152,7 +152,7 @@ use topcoat::{
 };
 
 #[layout("/")]
-async fn root_layout(slot: Slot) -> Result {
+async fn root_layout(slot: Slot<'_>) -> Result {
     view! {
         <!DOCTYPE html>
         <html>

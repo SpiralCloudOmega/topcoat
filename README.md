@@ -65,7 +65,7 @@ pub fn router() -> topcoat::router::Router {
 }
 
 #[layout]
-async fn layout(slot: Slot) -> Result {
+async fn layout(slot: Slot<'_>) -> Result {
     view! {
         <!DOCTYPE html>
         <html>
@@ -128,7 +128,7 @@ use topcoat::{
 };
 
 #[layout("/")]
-async fn root_layout(slot: Slot) -> Result {
+async fn root_layout(slot: Slot<'_>) -> Result {
     view! {
         <html><body>(slot.await?)</body></html>
     }
@@ -216,7 +216,7 @@ A `#[layout]` wraps all pages found in the same module (and submodules). It rece
 
 ```rust
 #[layout]
-async fn layout(slot: Slot) -> Result {
+async fn layout(slot: Slot<'_>) -> Result {
     view! {
         <html>
             <body>

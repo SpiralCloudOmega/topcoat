@@ -105,7 +105,7 @@ async fn current_user(cx: &Cx) -> Option<User> {
 }
 
 #[layout]
-async fn root(cx: &Cx, slot: Slot) -> Result {
+async fn root(cx: &Cx, slot: Slot<'_>) -> Result {
     let user = current_user(cx).await; // computes once
     view! {
         <header>

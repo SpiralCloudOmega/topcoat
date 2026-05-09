@@ -45,7 +45,7 @@ impl Parse for LayoutItem {
                     _ => {
                         return Err(syn::Error::new_spanned(
                             pat_type,
-                            "layout functions only accept a `slot: Slot` and an optional `cx: &Cx` parameter",
+                            "layout functions only accept a `slot: Slot<'_>` and an optional `cx: &Cx` parameter",
                         ));
                     }
                 },
@@ -54,7 +54,7 @@ impl Parse for LayoutItem {
         if !has_slot {
             return Err(syn::Error::new_spanned(
                 &item.sig,
-                "layout functions must take a `slot: Slot` parameter",
+                "layout functions must take a `slot: Slot<'_>` parameter",
             ));
         }
         Ok(Self { item, args })
