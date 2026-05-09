@@ -10,10 +10,7 @@
 //!   request ends. Within a request, [`request_state`] retrieves a reference
 //!   to a registered value by its type.
 
-use std::{
-    any::{Any, TypeId},
-    collections::HashMap,
-};
+use std::any::{Any, TypeId};
 
 use crate::context::Cx;
 
@@ -97,7 +94,7 @@ where
 /// retrieved within a request via [`app_state`] or [`request_state`].
 #[derive(Default, Debug)]
 pub struct State {
-    entries: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
+    entries: anymap3::Map<dyn Any + Send + Sync>,
 }
 
 impl State {
@@ -115,11 +112,7 @@ impl State {
     where
         T: Any + Send + Sync,
     {
-        if self
-            .entries
-            .insert(TypeId::of::<T>(), Box::new(value))
-            .is_some()
-        {
+        if self.entries.insert::<T>(value).is_some() {
             panic!("duplicate state entry for type `{:?}`", TypeId::of::<T>())
         }
     }
@@ -127,18 +120,13 @@ impl State {
     /// Returns a reference to the registered value of type `T`, or `None` if
     /// no such value has been registered.
     ///
-    /// This is an internal lookup used by [`app_state`]. Within a request,
-    /// prefer the [`app_state`] free function rather than calling this method
-    /// directly.
+    /// This is an internal lookup used by [`app_state`] and [`request_state`]. Within a request,
+    /// prefer the free functions rather than calling this method directly.
     fn get<T>(&self) -> Option<&T>
     where
         T: Any + Send + Sync,
     {
-        self.entries.get(&TypeId::of::<T>()).as_ref().map(|value| {
-            value
-                .downcast_ref()
-                .expect("value must downcast to the type it was registered as")
-        })
+        self.entries.get::<T>()
     }
 }
 

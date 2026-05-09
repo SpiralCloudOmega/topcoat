@@ -26,6 +26,7 @@ topcoat-pretty = { path = "crates/topcoat-pretty" }
 topcoat-router = { path = "crates/topcoat-router" }
 topcoat-view = { path = "crates/topcoat-view" }
 
+anymap3 = "1.0"
 axum = "0.8.8"
 boxcar = "0.2"
 bumpalo = "3.20"
