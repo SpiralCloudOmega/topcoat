@@ -62,12 +62,13 @@ async fn home_page(cx: &Cx) -> Result {
 
 mod about {
     use topcoat::{
+        asset::asset,
         router::{Result, page},
         view::view,
     };
 
     #[page]
     async fn about_page() -> Result {
-        view! { "about" }
+        view! { "about" <img src=(asset!("../ferris.png"))> }
     }
 }

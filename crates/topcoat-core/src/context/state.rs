@@ -10,7 +10,7 @@
 //!   request ends. Within a request, [`request_state`] retrieves a reference
 //!   to a registered value by its type.
 
-use std::any::{Any, TypeId};
+use std::any::{Any, TypeId, type_name};
 
 use crate::context::Cx;
 
@@ -44,7 +44,7 @@ where
         Some(value) => value,
         None => panic!(
             "attempted to access app state of type `{:?}`, but this type was not registered for this context",
-            TypeId::of::<T>()
+            type_name::<T>()
         ),
     }
 }
@@ -81,7 +81,7 @@ where
         Some(value) => value,
         None => panic!(
             "attempted to access request state of type `{:?}`, but this type was not registered for this context",
-            TypeId::of::<T>()
+            type_name::<T>()
         ),
     }
 }
@@ -113,7 +113,7 @@ impl State {
         T: Any + Send + Sync,
     {
         if self.entries.insert::<T>(value).is_some() {
-            panic!("duplicate state entry for type `{:?}`", TypeId::of::<T>())
+            panic!("duplicate state entry for type `{:?}`", type_name::<T>())
         }
     }
 
