@@ -56,11 +56,14 @@ pub struct Router {
 impl Router {
     /// Creates an empty router with no pages or layouts.
     pub fn new() -> Self {
+        let mut state = State::new();
+        // Register `()` so APIs generic over an app state type can default to `S = ()`.
+        state.register(());
         Self {
             pages: Pages::new(),
             layouts: Layouts::new(),
             assets: AssetBundle::empty(),
-            state: State::new(),
+            state,
         }
     }
 
