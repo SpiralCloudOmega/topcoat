@@ -7,7 +7,7 @@ use axum::{
     routing::get,
 };
 use http::Request;
-use topcoat_asset::{AssetBundle, ServeAssetBundle};
+use topcoat_asset::{AssetBundle, AssetFragmentResolver, ServeAssetBundle};
 use topcoat_core::context::{Cx, MaybeAborted, State, WatchAbort};
 
 use crate::{Layout, Layouts, Page, Pages};
@@ -151,8 +151,20 @@ impl Router {
 impl From<Router> for axum::Router {
     fn from(value: Router) -> Self {
         let mut result = axum::Router::<Arc<State>>::new();
+        let mut state = value.state;
 
-        result = result.nest_service("/_topcoat/assets", ServeAssetBundle::new(&value.assets));
+        let assets = value.assets;
+        result = result.nest_service("/_topcoat/assets", ServeAssetBundle::new(&assets));
+        let asset_resolver =
+            AssetFragmentResolver::new(Box::new(move |_cx, asset, f| match assets.get(asset) {
+                Some(asset) => {
+                    f.write_str("/_topcoat/assets/");
+                    f.write_str(asset.name().to_str().expect("asset had non-UTF8 name"));
+                }
+                None => panic!("failed to resolve asset {asset:?} in router's asset bundle"),
+            }));
+
+        state.register(asset_resolver);
 
         for page in value.pages {
             let mut layouts: Vec<_> = value.layouts.for_path(page.path()).cloned().collect();
@@ -196,6 +208,6 @@ impl From<Router> for axum::Router {
             );
         }
 
-        result.with_state(Arc::new(value.state))
+        result.with_state(Arc::new(state))
     }
 }
