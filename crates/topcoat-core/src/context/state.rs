@@ -10,7 +10,7 @@
 //!   request ends. Within a request, [`request_state`] retrieves a reference
 //!   to a registered value by its type.
 
-use std::any::{Any, TypeId, type_name};
+use std::any::{Any, type_name};
 
 use crate::context::Cx;
 

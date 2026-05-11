@@ -69,6 +69,6 @@ mod about {
 
     #[page]
     async fn about_page() -> Result {
-        view! { "about" <img src=(asset!("../ferris.png"))> }
+        view! { "about" <img src=asset!("../ferris.png")> }
     }
 }
