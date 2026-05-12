@@ -5,7 +5,7 @@ use axum::{
     response::IntoResponse,
     routing::{MethodFilter, get, on},
 };
-use http::{Request, StatusCode};
+use http::StatusCode;
 use topcoat_asset::{AssetBundle, AssetFragmentResolver, ServeAssetBundle};
 use topcoat_core::context::{Cx, MaybeAborted, State, WatchAbort};
 
@@ -191,7 +191,7 @@ impl From<Router> for axum::Router {
 
             result = result.route(
                 &page.path().to_axum_path(),
-                get(async move |CxAndBody { cx, body }: CxAndBody| {
+                get(async move |CxBody { cx, body }: CxBody| {
                     let result = WatchAbort::new(&cx, async {
                         let mut render = page.render(&cx, body);
                         for layout in layouts.iter().rev() {
@@ -217,7 +217,7 @@ impl From<Router> for axum::Router {
                 on(
                     MethodFilter::try_from(route.method().clone())
                         .unwrap_or_else(|_| panic!("unsupported method {:?}", route.method())),
-                    async move |CxAndBody { cx, body }: CxAndBody| {
+                    async move |CxBody { cx, body }: CxBody| {
                         let result = WatchAbort::new(&cx, route.handle(&cx, body)).await;
 
                         match result {
@@ -231,20 +231,19 @@ impl From<Router> for axum::Router {
             );
         }
 
-        result = result.fallback(async move |CxAndBody { cx, body }: CxAndBody| {
-            (StatusCode::OK, "not found lol")
-        });
+        result = result
+            .fallback(async move |CxBody { cx, body }: CxBody| (StatusCode::OK, "not found lol"));
 
         result.with_state(Arc::new(state))
     }
 }
 
-struct CxAndBody {
+struct CxBody {
     cx: Cx,
     body: Body,
 }
 
-impl FromRequest<Arc<State>> for CxAndBody {
+impl FromRequest<Arc<State>> for CxBody {
     type Rejection = Infallible;
 
     async fn from_request(
