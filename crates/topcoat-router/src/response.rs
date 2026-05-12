@@ -1,4 +1,6 @@
-pub type Response = axum::response::Response;
+use crate::Body;
+
+pub type Response<T = Body> = http::Response<T>;
 
 pub trait IntoResponse {
     fn into_response(self) -> Response;
