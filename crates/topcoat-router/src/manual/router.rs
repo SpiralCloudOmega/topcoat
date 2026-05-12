@@ -1,15 +1,14 @@
-use std::{any::Any, convert::Infallible, sync::Arc};
+use std::{any::Any, sync::Arc};
 
 use axum::{
-    extract::{self, FromRequest, FromRequestParts, RawPathParams},
     response::IntoResponse,
     routing::{MethodFilter, get, on},
 };
 use http::StatusCode;
 use topcoat_asset::{AssetBundle, AssetFragmentResolver, ServeAssetBundle};
-use topcoat_core::context::{Cx, MaybeAborted, State, WatchAbort};
+use topcoat_core::context::{MaybeAborted, State, WatchAbort};
 
-use crate::{Body, Layout, Layouts, Page, Pages, Route, Routes};
+use crate::{CxBody, Layout, Layouts, Page, Pages, Route, Routes};
 
 /// The core routing primitive that collects [`Page`]s, [`Layout`]s, and
 /// [`Route`]s, matches layouts to pages by path prefix, and converts into an
@@ -231,34 +230,10 @@ impl From<Router> for axum::Router {
             );
         }
 
-        result = result
-            .fallback(async move |CxBody { cx, body }: CxBody| (StatusCode::OK, "not found lol"));
+        result = result.fallback(async move |CxBody { cx: _, body: _ }: CxBody| {
+            (StatusCode::NOT_FOUND, "not found")
+        });
 
         result.with_state(Arc::new(state))
-    }
-}
-
-struct CxBody {
-    cx: Cx,
-    body: Body,
-}
-
-impl FromRequest<Arc<State>> for CxBody {
-    type Rejection = Infallible;
-
-    async fn from_request(
-        req: extract::Request,
-        state: &Arc<State>,
-    ) -> Result<Self, Self::Rejection> {
-        let app_state = state.clone();
-        let (mut parts, body) = req.into_parts();
-        let body = Body::from(body);
-
-        let mut request_state = State::new();
-        request_state.register(RawPathParams::from_request_parts(&mut parts, state).await);
-        request_state.register(parts);
-
-        let cx = Cx::new(app_state, request_state);
-        Ok(Self { cx, body })
     }
 }
