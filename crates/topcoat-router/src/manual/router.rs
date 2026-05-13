@@ -1,12 +1,13 @@
 use std::{any::Any, sync::Arc};
 
 use axum::{
-    response::IntoResponse,
+    response::{Html, IntoResponse},
     routing::{MethodFilter, get, on},
 };
 use http::StatusCode;
 use topcoat_asset::{AssetBundle, AssetFragmentResolver, ServeAssetBundle};
 use topcoat_core::context::{MaybeAborted, State, WatchAbort};
+use topcoat_view::runtime::render;
 
 use crate::{CxBody, Layout, Layouts, Page, Pages, Route, Routes};
 
@@ -201,7 +202,10 @@ impl From<Router> for axum::Router {
                     .await;
 
                     match result {
-                        MaybeAborted::Completed(value) => value.into_response(),
+                        MaybeAborted::Completed(Ok(view)) => {
+                            Html(render(&cx, view)).into_response()
+                        }
+                        MaybeAborted::Completed(Err(error)) => error.into_response(),
                         MaybeAborted::Aborted(_value) => {
                             panic!("request was aborted with an unrecognized type");
                         }

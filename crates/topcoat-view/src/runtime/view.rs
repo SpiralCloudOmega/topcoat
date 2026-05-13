@@ -1,7 +1,11 @@
-use std::borrow::Cow;
-use std::fmt;
+use core::any::Any;
+use core::fmt;
 
-/// A rendered piece of HTML content.
+use topcoat_core::context::Cx;
+
+use crate::runtime::{Formatter, Fragment};
+
+/// A piece of HTML content.
 ///
 /// A `View` contains a self-contained HTML fragment where all tags are fully
 /// closed. This means it can contain multiple sibling elements, but every
@@ -16,32 +20,246 @@ use std::fmt;
 /// <!-- Invalid: unclosed tag would corrupt the parent document -->
 /// <div>Hello
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct View {
-    pub(super) buf: Cow<'static, str>,
+    part: ViewPart,
 }
 
 impl View {
-    /// Creates a new `View` from the given HTML content.
-    ///
-    /// The caller is responsible for ensuring the HTML fragment is
-    /// well-formed with all tags properly closed.
     #[inline]
-    pub fn new(buf: impl Into<Cow<'static, str>>) -> Self {
-        Self { buf: buf.into() }
+    pub fn new(part: ViewPart) -> Self {
+        Self { part }
     }
 }
 
-impl fmt::Display for View {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.buf)
+impl Fragment for View {
+    fn fmt(&self, cx: &Cx, f: &mut Formatter<'_>) {
+        self.part.fmt(cx, f);
+    }
+
+    fn fmt_unescaped(&self, cx: &Cx, f: &mut Formatter<'_>) {
+        self.part.fmt_unescaped(cx, f);
     }
 }
 
-#[cfg(feature = "axum")]
-impl axum::response::IntoResponse for View {
-    fn into_response(self) -> axum::response::Response {
-        axum::response::Html(self.buf.into_owned()).into_response()
+#[derive(Debug, Clone, PartialEq)]
+pub enum ViewPart {
+    StaticStr(&'static str),
+    String(String),
+    Primitive(Primitive),
+    Dyn(Box<dyn DynViewPart>),
+    Node(Box<[ViewPart]>),
+}
+
+pub trait DynViewPart: fmt::Debug {
+    fn dyn_fmt(&self, cx: &Cx, f: &mut Formatter<'_>);
+    fn dyn_fmt_unescaped(&self, cx: &Cx, f: &mut Formatter<'_>);
+    fn clone_box(&self) -> Box<dyn DynViewPart>;
+    fn dyn_eq(&self, other: &dyn DynViewPart) -> bool;
+    fn as_any(&self) -> &dyn Any;
+}
+
+impl<T> DynViewPart for T
+where
+    T: 'static + Fragment + fmt::Debug + Clone + PartialEq,
+{
+    #[inline]
+    fn dyn_fmt(&self, cx: &Cx, f: &mut Formatter<'_>) {
+        Fragment::fmt(self, cx, f);
+    }
+
+    #[inline]
+    fn dyn_fmt_unescaped(&self, cx: &Cx, f: &mut Formatter<'_>) {
+        Fragment::fmt_unescaped(self, cx, f);
+    }
+
+    #[inline]
+    fn clone_box(&self) -> Box<dyn DynViewPart> {
+        Box::new(self.clone())
+    }
+
+    #[inline]
+    fn dyn_eq(&self, other: &dyn DynViewPart) -> bool {
+        other.as_any().downcast_ref::<T>() == Some(self)
+    }
+
+    #[inline]
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
+
+impl Clone for Box<dyn DynViewPart> {
+    #[inline]
+    fn clone(&self) -> Self {
+        (**self).clone_box()
+    }
+}
+
+impl PartialEq for Box<dyn DynViewPart> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        (**self).dyn_eq(&**other)
+    }
+}
+
+impl Fragment for ViewPart {
+    fn fmt(&self, cx: &Cx, f: &mut Formatter<'_>) {
+        match self {
+            Self::StaticStr(s) => s.fmt(cx, f),
+            Self::String(s) => s.fmt(cx, f),
+            Self::Primitive(p) => p.fmt(cx, f),
+            Self::Dyn(d) => d.dyn_fmt(cx, f),
+            Self::Node(parts) => {
+                for part in parts.iter() {
+                    part.fmt(cx, f);
+                }
+            }
+        }
+    }
+
+    fn fmt_unescaped(&self, cx: &Cx, f: &mut Formatter<'_>) {
+        match self {
+            Self::StaticStr(s) => s.fmt_unescaped(cx, f),
+            Self::String(s) => s.fmt_unescaped(cx, f),
+            Self::Primitive(p) => p.fmt_unescaped(cx, f),
+            Self::Dyn(d) => d.dyn_fmt_unescaped(cx, f),
+            Self::Node(parts) => {
+                for part in parts.iter() {
+                    part.fmt_unescaped(cx, f);
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Primitive {
+    Bool(bool),
+    Char(char),
+    I8(i8),
+    I16(i16),
+    I32(i32),
+    I64(i64),
+    I128(i128),
+    Isize(isize),
+    U8(u8),
+    U16(u16),
+    U32(u32),
+    U64(u64),
+    U128(u128),
+    Usize(usize),
+    F32(f32),
+    F64(f64),
+}
+
+impl Fragment for Primitive {
+    fn fmt(&self, cx: &Cx, f: &mut Formatter<'_>) {
+        match self {
+            Self::Bool(v) => v.fmt(cx, f),
+            Self::Char(v) => v.fmt(cx, f),
+            Self::I8(v) => v.fmt(cx, f),
+            Self::I16(v) => v.fmt(cx, f),
+            Self::I32(v) => v.fmt(cx, f),
+            Self::I64(v) => v.fmt(cx, f),
+            Self::I128(v) => v.fmt(cx, f),
+            Self::Isize(v) => v.fmt(cx, f),
+            Self::U8(v) => v.fmt(cx, f),
+            Self::U16(v) => v.fmt(cx, f),
+            Self::U32(v) => v.fmt(cx, f),
+            Self::U64(v) => v.fmt(cx, f),
+            Self::U128(v) => v.fmt(cx, f),
+            Self::Usize(v) => v.fmt(cx, f),
+            Self::F32(v) => v.fmt(cx, f),
+            Self::F64(v) => v.fmt(cx, f),
+        }
+    }
+
+    fn fmt_unescaped(&self, cx: &Cx, f: &mut Formatter<'_>) {
+        match self {
+            Self::Bool(v) => v.fmt_unescaped(cx, f),
+            Self::Char(v) => v.fmt_unescaped(cx, f),
+            Self::I8(v) => v.fmt_unescaped(cx, f),
+            Self::I16(v) => v.fmt_unescaped(cx, f),
+            Self::I32(v) => v.fmt_unescaped(cx, f),
+            Self::I64(v) => v.fmt_unescaped(cx, f),
+            Self::I128(v) => v.fmt_unescaped(cx, f),
+            Self::Isize(v) => v.fmt_unescaped(cx, f),
+            Self::U8(v) => v.fmt_unescaped(cx, f),
+            Self::U16(v) => v.fmt_unescaped(cx, f),
+            Self::U32(v) => v.fmt_unescaped(cx, f),
+            Self::U64(v) => v.fmt_unescaped(cx, f),
+            Self::U128(v) => v.fmt_unescaped(cx, f),
+            Self::Usize(v) => v.fmt_unescaped(cx, f),
+            Self::F32(v) => v.fmt_unescaped(cx, f),
+            Self::F64(v) => v.fmt_unescaped(cx, f),
+        }
+    }
+}
+
+pub trait IntoViewPart {
+    fn into_view_part(self) -> ViewPart;
+}
+
+impl IntoViewPart for &'static str {
+    #[inline]
+    fn into_view_part(self) -> ViewPart {
+        ViewPart::StaticStr(self)
+    }
+}
+
+impl IntoViewPart for String {
+    #[inline]
+    fn into_view_part(self) -> ViewPart {
+        ViewPart::String(self)
+    }
+}
+
+impl IntoViewPart for Primitive {
+    #[inline]
+    fn into_view_part(self) -> ViewPart {
+        ViewPart::Primitive(self)
+    }
+}
+
+impl IntoViewPart for Box<dyn DynViewPart> {
+    #[inline]
+    fn into_view_part(self) -> ViewPart {
+        ViewPart::Dyn(self)
+    }
+}
+
+impl IntoViewPart for Box<[ViewPart]> {
+    #[inline]
+    fn into_view_part(self) -> ViewPart {
+        ViewPart::Node(self)
+    }
+}
+
+macro_rules! impl_into_view_part_primitive {
+    ($variant:ident, $ty:ty) => {
+        impl IntoViewPart for $ty {
+            #[inline]
+            fn into_view_part(self) -> ViewPart {
+                ViewPart::Primitive(Primitive::$variant(self))
+            }
+        }
+    };
+}
+
+impl_into_view_part_primitive!(Bool, bool);
+impl_into_view_part_primitive!(Char, char);
+impl_into_view_part_primitive!(I8, i8);
+impl_into_view_part_primitive!(I16, i16);
+impl_into_view_part_primitive!(I32, i32);
+impl_into_view_part_primitive!(I64, i64);
+impl_into_view_part_primitive!(I128, i128);
+impl_into_view_part_primitive!(Isize, isize);
+impl_into_view_part_primitive!(U8, u8);
+impl_into_view_part_primitive!(U16, u16);
+impl_into_view_part_primitive!(U32, u32);
+impl_into_view_part_primitive!(U64, u64);
+impl_into_view_part_primitive!(U128, u128);
+impl_into_view_part_primitive!(Usize, usize);
+impl_into_view_part_primitive!(F32, f32);
+impl_into_view_part_primitive!(F64, f64);

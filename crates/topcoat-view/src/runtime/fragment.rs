@@ -2,7 +2,7 @@ use std::{ops::Deref, rc::Rc, sync::Arc};
 
 use topcoat_core::context::Cx;
 
-use crate::runtime::{Formatter, view::View};
+use crate::runtime::Formatter;
 
 /// A piece of content that can be rendered into HTML.
 ///
@@ -66,24 +66,12 @@ where
             fragment.fmt(cx, f);
         }
     }
+
     #[inline]
     fn fmt_unescaped(&self, cx: &Cx, f: &mut Formatter<'_>) {
         if let Some(fragment) = self {
             fragment.fmt_unescaped(cx, f);
         }
-    }
-}
-
-impl Fragment for View {
-    #[inline]
-    fn fmt(&self, cx: &Cx, f: &mut Formatter<'_>) {
-        // Views are guaranteed to already be escaped.
-        self.fmt_unescaped(cx, f);
-    }
-
-    #[inline]
-    fn fmt_unescaped(&self, _cx: &Cx, f: &mut Formatter<'_>) {
-        f.write_str_unescaped(&self.buf)
     }
 }
 
@@ -119,12 +107,17 @@ impl_with_display!(i16);
 impl_with_display!(i32);
 impl_with_display!(i64);
 impl_with_display!(i128);
+impl_with_display!(isize);
 impl_with_display!(u8);
 impl_with_display!(u16);
 impl_with_display!(u32);
 impl_with_display!(u64);
 impl_with_display!(u128);
+impl_with_display!(usize);
+impl_with_display!(f32);
+impl_with_display!(f64);
 impl_with_display!(bool);
+impl_with_display!(char);
 
 macro_rules! impl_smart_pointer {
     ($name:ident) => {
