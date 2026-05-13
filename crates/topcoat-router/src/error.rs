@@ -3,7 +3,7 @@
 use axum::response::IntoResponse;
 use http::StatusCode;
 
-use crate::RedirectError;
+use crate::{NotFoundError, RedirectError};
 
 /// The result type returned from page and layout handlers.
 ///
@@ -17,6 +17,8 @@ pub type Result<T = topcoat_view::runtime::View, E = Error> = core::result::Resu
 pub enum Error {
     /// A redirect short-circuiting the request to another URL.
     Redirect(RedirectError),
+    /// A not-found response short-circuiting the request.
+    NotFound(NotFoundError),
     /// An unexpected failure.
     InternalServer(InternalServerError),
 }
@@ -24,6 +26,12 @@ pub enum Error {
 impl From<RedirectError> for Error {
     fn from(value: RedirectError) -> Self {
         Self::Redirect(value)
+    }
+}
+
+impl From<NotFoundError> for Error {
+    fn from(value: NotFoundError) -> Self {
+        Self::NotFound(value)
     }
 }
 
@@ -51,6 +59,7 @@ impl IntoResponse for Error {
     fn into_response(self) -> axum::response::Response {
         match self {
             Self::Redirect(inner) => inner.into_response(),
+            Self::NotFound(inner) => inner.into_response(),
             Self::InternalServer(inner) => inner.into_response(),
         }
     }
