@@ -55,6 +55,10 @@ impl Memoize {
     pub fn new(attr: MemoizeAttr, item: MemoizeItem) -> Self {
         Self(attr, item)
     }
+
+    pub fn parse(attr: TokenStream, item: TokenStream) -> syn::Result<Self> {
+        Ok(Self::new(syn::parse2(attr)?, syn::parse2(item)?))
+    }
 }
 
 impl ToTokens for Memoize {

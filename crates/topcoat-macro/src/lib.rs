@@ -1,9 +1,6 @@
 mod memoize;
 mod quote_option;
 
-#[cfg(feature = "view")]
-mod component;
-
 #[cfg(feature = "router")]
 mod layout;
 #[cfg(feature = "router")]
@@ -39,28 +36,28 @@ pub fn component(attr: TokenStream, item: TokenStream) -> TokenStream {
 #[cfg(feature = "router")]
 #[proc_macro_attribute]
 pub fn page(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let attr = syn::parse_macro_input!(attr as page::PageAttr);
-    let item = syn::parse_macro_input!(item as page::PageItem);
-    let combined = page::Page::new(attr, item);
-    quote! { #combined }.into()
+    match page::Page::parse(attr.into(), item.into()) {
+        Ok(value) => quote! { #value }.into(),
+        Err(error) => error.to_compile_error().into(),
+    }
 }
 
 #[cfg(feature = "router")]
 #[proc_macro_attribute]
 pub fn layout(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let attr = syn::parse_macro_input!(attr as layout::LayoutAttr);
-    let item = syn::parse_macro_input!(item as layout::LayoutItem);
-    let combined = layout::Layout::new(attr, item);
-    quote! { #combined }.into()
+    match layout::Layout::parse(attr.into(), item.into()) {
+        Ok(value) => quote! { #value }.into(),
+        Err(error) => error.to_compile_error().into(),
+    }
 }
 
 #[cfg(feature = "router")]
 #[proc_macro_attribute]
 pub fn route(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let attr = syn::parse_macro_input!(attr as route::RouteAttr);
-    let item = syn::parse_macro_input!(item as route::RouteItem);
-    let combined = route::Route::new(attr, item);
-    quote! { #combined }.into()
+    match route::Route::parse(attr.into(), item.into()) {
+        Ok(value) => quote! { #value }.into(),
+        Err(error) => error.to_compile_error().into(),
+    }
 }
 
 #[cfg(feature = "router")]
@@ -166,10 +163,10 @@ pub fn segment(tokens: TokenStream) -> TokenStream {
 #[cfg(feature = "router")]
 #[proc_macro_attribute]
 pub fn path_param(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let attr = syn::parse_macro_input!(attr as path_param::PathParamAttr);
-    let item = syn::parse_macro_input!(item as path_param::PathParamItem);
-    let combined = path_param::PathParam::new(attr, item);
-    quote! { #combined }.into()
+    match path_param::PathParam::parse(attr.into(), item.into()) {
+        Ok(value) => quote! { #value }.into(),
+        Err(error) => error.to_compile_error().into(),
+    }
 }
 
 /// Declares a typed view of the request's query string.
@@ -220,10 +217,10 @@ pub fn path_param(attr: TokenStream, item: TokenStream) -> TokenStream {
 #[cfg(feature = "router")]
 #[proc_macro_attribute]
 pub fn query_params(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let attr = syn::parse_macro_input!(attr as query_params::QueryParamsAttr);
-    let item = syn::parse_macro_input!(item as query_params::QueryParamsItem);
-    let combined = query_params::QueryParams::new(attr, item);
-    quote! { #combined }.into()
+    match query_params::QueryParams::parse(attr.into(), item.into()) {
+        Ok(value) => quote! { #value }.into(),
+        Err(error) => error.to_compile_error().into(),
+    }
 }
 
 /// Caches the result of a function for the duration of a request, keyed by its arguments.
@@ -275,8 +272,8 @@ pub fn query_params(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// - The return type `T` must be `Send + Sync + 'static`.
 #[proc_macro_attribute]
 pub fn memoize(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let attr = syn::parse_macro_input!(attr as memoize::MemoizeAttr);
-    let item = syn::parse_macro_input!(item as memoize::MemoizeItem);
-    let memoize = memoize::Memoize::new(attr, item);
-    quote! { #memoize }.into()
+    match memoize::Memoize::parse(attr.into(), item.into()) {
+        Ok(value) => quote! { #value }.into(),
+        Err(error) => error.to_compile_error().into(),
+    }
 }
