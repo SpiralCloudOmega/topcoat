@@ -19,12 +19,17 @@ use crate::runtime::{Formatter, Fragment, Unescaped};
 /// <!-- Invalid: unclosed tag would corrupt the parent document -->
 /// <div>Hello
 /// ```
+///
+/// A `View` is inert until [`render`](Self::render) is called: constructing
+/// one only stores the underlying [`ViewPart`] tree, with no escaping or
+/// string building performed up-front.
 #[derive(Debug, Clone)]
 pub struct View {
     part: ViewPart,
 }
 
 impl View {
+    /// Builds a `View` from any value that can be converted into a [`ViewPart`].
     #[inline]
     pub fn new(part: impl IntoViewPart) -> Self {
         Self {
@@ -32,11 +37,19 @@ impl View {
         }
     }
 
+    /// Returns a `View` that renders to an empty string.
     #[inline]
     pub fn empty() -> Self {
         Self::new(ViewPart::Empty)
     }
 
+    /// Renders the view into an HTML string.
+    ///
+    /// Walks the underlying [`ViewPart`] tree, invoking
+    /// [`Fragment::fmt`](crate::runtime::Fragment::fmt) on each node. The
+    /// output buffer is pre-allocated based on
+    /// [`Fragment::size_hint`](crate::runtime::Fragment::size_hint), which is
+    /// a lower bound, so the buffer may grow during rendering.
     pub fn render(&self, cx: &Cx) -> String {
         let mut buf = String::with_capacity(self.size_hint());
         let mut f = Formatter::new(&mut buf);
@@ -56,6 +69,14 @@ impl Fragment for View {
     }
 }
 
+/// A single node in the lazy tree backing a [`View`].
+///
+/// Each variant represents a kind of content the runtime knows how to render
+/// without allocating a trait object. Primitive types get dedicated variants
+/// so they can be stored inline; arbitrary [`Fragment`] implementations are
+/// reached via [`BoxDyn`](Self::BoxDyn), and nested structure is expressed
+/// with [`Node`](Self::Node). Like [`View`], `ViewPart`s are inert until
+/// rendered.
 #[derive(Debug, Clone)]
 pub enum ViewPart {
     Empty,
@@ -81,8 +102,20 @@ pub enum ViewPart {
     Node(Box<[ViewPart]>),
 }
 
+/// Object-safe counterpart to [`Fragment`] used by [`ViewPart::BoxDyn`].
+///
+/// Allows arbitrary [`Fragment`] implementations to be stored inside a
+/// [`ViewPart`] behind a `Box<dyn ...>`. A blanket impl covers every type
+/// that is `Fragment + Debug + Clone + Send + 'static`, so user code should
+/// rarely need to implement this trait directly.
 pub trait DynViewPart: fmt::Debug + Send {
+    /// Renders the underlying fragment. See [`Fragment::fmt`].
     fn dyn_fmt(&self, cx: &Cx, f: &mut Formatter<'_>);
+
+    /// Clones the underlying value into a fresh `Box<dyn DynViewPart>`.
+    ///
+    /// Required because `dyn DynViewPart` cannot use the standard `Clone`
+    /// trait directly.
     fn clone_box(&self) -> Box<dyn DynViewPart>;
 }
 
@@ -166,7 +199,15 @@ impl Fragment for ViewPart {
     }
 }
 
+/// Conversion into a [`ViewPart`].
+///
+/// The `view!` macro calls `into_view_part` on every expression interpolated
+/// into the view tree, so implementing this trait is what makes a type
+/// embeddable inside `view!` markup. Built-in impls cover primitives,
+/// strings, [`Option`], and pre-built [`View`]/[`ViewPart`] values; user
+/// types can opt in by adding their own impl.
 pub trait IntoViewPart {
+    /// Consumes `self` and produces the corresponding [`ViewPart`].
     fn into_view_part(self) -> ViewPart;
 }
 

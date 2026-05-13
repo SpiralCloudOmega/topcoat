@@ -4,6 +4,18 @@ use topcoat_core::context::Cx;
 
 use crate::runtime::{Formatter, Fragment, IntoViewPart, ViewPart};
 
+/// A wrapper that marks its contents as already-safe HTML.
+///
+/// When an `Unescaped<T>` is rendered, its inner value is written verbatim
+/// using [`Formatter::write_str_unescaped`](crate::runtime::Formatter::write_str_unescaped)
+/// instead of going through the usual escaping path. This is the escape
+/// hatch for inserting trusted markup (pre-rendered HTML, sanitized
+/// fragments, server-generated tags) into a [`View`](crate::runtime::View).
+///
+/// Construct an `Unescaped` with [`new_unchecked`](Self::new_unchecked); the
+/// name reflects that the caller is asserting the content is safe to emit
+/// without escaping. Passing untrusted input through this type defeats the
+/// runtime's XSS protection.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Unescaped<T>(T);
 
