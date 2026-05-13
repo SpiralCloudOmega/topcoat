@@ -2,34 +2,6 @@ use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
 use syn::{Expr, Pat};
 
-enum Chunk {
-    Expr(TokenStream),
-    Let {
-        pat: Pat,
-        expr: Box<Expr>,
-    },
-    For {
-        pat: Pat,
-        expr: Box<Expr>,
-        body: Box<ViewWriter>,
-    },
-    If {
-        expr: Expr,
-        then_branch: Box<ViewWriter>,
-        else_branch: Box<ViewWriter>,
-    },
-    Match {
-        expr: Box<Expr>,
-        arms: Vec<MatchArm>,
-    },
-}
-
-struct MatchArm {
-    pat: Pat,
-    guard: Option<Expr>,
-    body: Box<ViewWriter>,
-}
-
 /// Builds the `TokenStream` that a `view!` invocation expands to.
 ///
 /// Adjacent literal markup is concatenated into `static_segment` and flushed as
@@ -228,6 +200,34 @@ impl ViewWriter {
             quote! { async { Ok(#format_expr) }.await }
         }
     }
+}
+
+enum Chunk {
+    Expr(TokenStream),
+    Let {
+        pat: Pat,
+        expr: Box<Expr>,
+    },
+    For {
+        pat: Pat,
+        expr: Box<Expr>,
+        body: Box<ViewWriter>,
+    },
+    If {
+        expr: Expr,
+        then_branch: Box<ViewWriter>,
+        else_branch: Box<ViewWriter>,
+    },
+    Match {
+        expr: Box<Expr>,
+        arms: Vec<MatchArm>,
+    },
+}
+
+struct MatchArm {
+    pat: Pat,
+    guard: Option<Expr>,
+    body: Box<ViewWriter>,
 }
 
 pub(crate) struct MatchArmsBuilder {
