@@ -264,6 +264,13 @@ impl IntoViewPart for Box<dyn DynViewPart> {
     }
 }
 
+impl<const N: usize> IntoViewPart for [ViewPart; N] {
+    #[inline]
+    fn into_view_part(self) -> ViewPart {
+        ViewPart::Node(Box::new(self))
+    }
+}
+
 impl IntoViewPart for Box<[ViewPart]> {
     #[inline]
     fn into_view_part(self) -> ViewPart {

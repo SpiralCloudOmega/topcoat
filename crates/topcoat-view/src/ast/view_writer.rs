@@ -186,9 +186,9 @@ impl ViewWriter {
                         _ => panic!("expected expression"),
                     });
                     quote! {{
-                        ::topcoat::view::View::new(Box::new([
+                        ::topcoat::view::View::new([
                             #(::topcoat::view::IntoViewPart::into_view_part(#entries),)*
-                        ]))
+                        ])
                     }}
                 }
             }
