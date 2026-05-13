@@ -194,7 +194,7 @@ impl ViewWriter {
                 let statements = recursive(&self.chunks);
 
                 quote! {{
-                    let __v = Vec::with_capacity(#capacity);
+                    let mut __v = Vec::with_capacity(#capacity);
                     #statements
                     ::topcoat::view::View::new(__v.into_boxed_slice())
                 }}
