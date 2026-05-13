@@ -3,7 +3,7 @@
 use axum::response::IntoResponse;
 use http::StatusCode;
 
-use crate::{NotFoundError, RedirectError};
+use crate::{ForbiddenError, NotFoundError, RedirectError, UnauthorizedError};
 
 /// The result type returned from page and layout handlers.
 ///
@@ -19,6 +19,10 @@ pub enum Error {
     Redirect(RedirectError),
     /// A not-found response short-circuiting the request.
     NotFound(NotFoundError),
+    /// An unauthorized response short-circuiting the request.
+    Unauthorized(UnauthorizedError),
+    /// A forbidden response short-circuiting the request.
+    Forbidden(ForbiddenError),
     /// An unexpected failure.
     InternalServer(InternalServerError),
 }
@@ -32,6 +36,18 @@ impl From<RedirectError> for Error {
 impl From<NotFoundError> for Error {
     fn from(value: NotFoundError) -> Self {
         Self::NotFound(value)
+    }
+}
+
+impl From<UnauthorizedError> for Error {
+    fn from(value: UnauthorizedError) -> Self {
+        Self::Unauthorized(value)
+    }
+}
+
+impl From<ForbiddenError> for Error {
+    fn from(value: ForbiddenError) -> Self {
+        Self::Forbidden(value)
     }
 }
 
@@ -60,6 +76,8 @@ impl IntoResponse for Error {
         match self {
             Self::Redirect(inner) => inner.into_response(),
             Self::NotFound(inner) => inner.into_response(),
+            Self::Unauthorized(inner) => inner.into_response(),
+            Self::Forbidden(inner) => inner.into_response(),
             Self::InternalServer(inner) => inner.into_response(),
         }
     }

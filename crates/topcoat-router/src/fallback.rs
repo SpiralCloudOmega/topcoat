@@ -2,9 +2,9 @@
 //!
 //! A handler can short-circuit by returning one of the fallback errors in
 //! this module as the `Err` variant of its [`Result`]. [`redirect`],
-//! [`redirect_permanent`], and [`not_found`] construct one directly, and
-//! [`FallbackExt`] lets `Option` and `Result` values fall through to a
-//! fallback via the `?` operator.
+//! [`redirect_permanent`], [`not_found`], [`unauthorized`], and
+//! [`forbidden`] construct one directly, and [`FallbackExt`] lets `Option`
+//! and `Result` values fall through to a fallback via the `?` operator.
 
 use axum::response::Redirect;
 use http::StatusCode;
@@ -34,6 +34,18 @@ pub fn redirect(uri: &str) -> RedirectError {
 ///
 /// Use this for URLs that have moved for good — clients and search engines
 /// are allowed to cache the new location.
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// use topcoat::context::Cx;
+/// use topcoat::router::{Result, page, redirect_permanent};
+///
+/// #[page]
+/// async fn legacy_profile(cx: &Cx) -> Result {
+///     Err(redirect_permanent("/profile").into())
+/// }
+/// ```
 pub fn redirect_permanent(uri: &str) -> RedirectError {
     RedirectError::new(Redirect::permanent(uri))
 }
@@ -55,6 +67,49 @@ pub fn redirect_permanent(uri: &str) -> RedirectError {
 /// ```
 pub fn not_found() -> NotFoundError {
     NotFoundError::new()
+}
+
+/// Builds an unauthorized (HTTP 401) response.
+///
+/// Use this when the request lacks valid authentication credentials.
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// use topcoat::context::Cx;
+/// use topcoat::router::{Result, unauthorized};
+///
+/// async fn current_user(cx: &Cx) -> Result<User> {
+///     let Some(user) = session(cx).await else {
+///         return Err(unauthorized().into());
+///     };
+///     Ok(user)
+/// }
+/// ```
+pub fn unauthorized() -> UnauthorizedError {
+    UnauthorizedError::new()
+}
+
+/// Builds a forbidden (HTTP 403) response.
+///
+/// Use this when the caller is authenticated but not permitted to access
+/// the resource.
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// use topcoat::context::Cx;
+/// use topcoat::router::{Result, forbidden};
+///
+/// async fn admin_panel(cx: &Cx, user: &User) -> Result<View> {
+///     if !user.is_admin() {
+///         return Err(forbidden().into());
+///     }
+///     Ok(render_admin(cx))
+/// }
+/// ```
+pub fn forbidden() -> ForbiddenError {
+    ForbiddenError::new()
 }
 
 /// A redirect response carried as the `Err` variant of a handler [`Result`].
@@ -99,12 +154,55 @@ impl axum::response::IntoResponse for NotFoundError {
     }
 }
 
+/// An unauthorized response carried as the `Err` variant of a handler [`Result`].
+///
+/// Construct one with [`unauthorized`], or surface one from an `Option` /
+/// `Result` via [`FallbackExt`].
+#[derive(Debug)]
+pub struct UnauthorizedError {
+    _priv: (),
+}
+
+impl UnauthorizedError {
+    fn new() -> Self {
+        Self { _priv: () }
+    }
+}
+
+impl axum::response::IntoResponse for UnauthorizedError {
+    fn into_response(self) -> axum::response::Response {
+        StatusCode::UNAUTHORIZED.into_response()
+    }
+}
+
+/// A forbidden response carried as the `Err` variant of a handler [`Result`].
+///
+/// Construct one with [`forbidden`], or surface one from an `Option` /
+/// `Result` via [`FallbackExt`].
+#[derive(Debug)]
+pub struct ForbiddenError {
+    _priv: (),
+}
+
+impl ForbiddenError {
+    fn new() -> Self {
+        Self { _priv: () }
+    }
+}
+
+impl axum::response::IntoResponse for ForbiddenError {
+    fn into_response(self) -> axum::response::Response {
+        StatusCode::FORBIDDEN.into_response()
+    }
+}
+
 /// Converts an absent or failed value into a fallback response.
 ///
 /// Implemented for [`Option`] (where `None` becomes the fallback) and
 /// [`Result`] (where any `Err` becomes the fallback, discarding the
 /// original error). Designed to be combined with `?` so a caller can fall
-/// through to a redirect or not-found on missing or invalid state.
+/// through to a redirect, not-found, unauthorized, or forbidden response
+/// on missing or invalid state.
 ///
 /// # Examples
 ///
@@ -129,6 +227,12 @@ pub trait FallbackExt {
 
     /// Returns `Ok(value)` if present, otherwise a not-found response.
     fn ok_or_not_found(self) -> Result<Self::T>;
+
+    /// Returns `Ok(value)` if present, otherwise an unauthorized response.
+    fn ok_or_unauthorized(self) -> Result<Self::T>;
+
+    /// Returns `Ok(value)` if present, otherwise a forbidden response.
+    fn ok_or_forbidden(self) -> Result<Self::T>;
 }
 
 impl<T> FallbackExt for Option<T> {
@@ -154,6 +258,20 @@ impl<T> FallbackExt for Option<T> {
             None => Err(not_found().into()),
         }
     }
+
+    fn ok_or_unauthorized(self) -> Result<Self::T> {
+        match self {
+            Some(value) => Ok(value),
+            None => Err(unauthorized().into()),
+        }
+    }
+
+    fn ok_or_forbidden(self) -> Result<Self::T> {
+        match self {
+            Some(value) => Ok(value),
+            None => Err(forbidden().into()),
+        }
+    }
 }
 
 impl<T, E> FallbackExt for Result<T, E> {
@@ -177,6 +295,20 @@ impl<T, E> FallbackExt for Result<T, E> {
         match self {
             Ok(value) => Ok(value),
             Err(_) => Err(not_found().into()),
+        }
+    }
+
+    fn ok_or_unauthorized(self) -> Result<Self::T> {
+        match self {
+            Ok(value) => Ok(value),
+            Err(_) => Err(unauthorized().into()),
+        }
+    }
+
+    fn ok_or_forbidden(self) -> Result<Self::T> {
+        match self {
+            Ok(value) => Ok(value),
+            Err(_) => Err(forbidden().into()),
         }
     }
 }
