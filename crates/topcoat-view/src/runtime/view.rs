@@ -96,7 +96,9 @@ pub enum ViewPart {
     Usize(usize),
     F32(f32),
     F64(f64),
+    StaticStr(&'static str),
     String(String),
+    UnescapedStaticStr(Unescaped<&'static str>),
     UnescapedString(Unescaped<String>),
     BoxDyn(Box<dyn DynViewPart>),
     Node(Box<[ViewPart]>),
@@ -171,7 +173,9 @@ impl Fragment for ViewPart {
             Self::F32(v) => v.fmt(cx, f),
             Self::F64(v) => v.fmt(cx, f),
             Self::String(s) => s.fmt(cx, f),
+            Self::StaticStr(s) => s.fmt(cx, f),
             Self::UnescapedString(s) => s.fmt(cx, f),
+            Self::UnescapedStaticStr(s) => s.fmt(cx, f),
             Self::BoxDyn(d) => d.dyn_fmt(cx, f),
             Self::Node(parts) => {
                 for part in parts.iter() {
@@ -200,8 +204,10 @@ impl Fragment for ViewPart {
             Self::Usize(v) => v.size_hint(),
             Self::F32(v) => v.size_hint(),
             Self::F64(v) => v.size_hint(),
+            Self::StaticStr(s) => s.size_hint(),
             Self::String(s) => s.size_hint(),
             Self::UnescapedString(s) => s.len(),
+            Self::UnescapedStaticStr(s) => s.len(),
             Self::BoxDyn(d) => d.dyn_size_hint(),
             Self::Node(parts) => parts.iter().map(|part| part.size_hint()).sum(),
         }

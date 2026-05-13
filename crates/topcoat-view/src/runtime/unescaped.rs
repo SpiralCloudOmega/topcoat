@@ -54,9 +54,9 @@ impl<T> Deref for Unescaped<T> {
     }
 }
 
-impl IntoViewPart for Unescaped<&str> {
+impl IntoViewPart for Unescaped<&'static str> {
     fn into_view_part(self) -> ViewPart {
-        ViewPart::UnescapedString(Unescaped(self.0.to_owned()))
+        ViewPart::UnescapedStaticStr(self)
     }
 }
 
