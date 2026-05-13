@@ -40,9 +40,24 @@ impl Fragment for View {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ViewPart {
+    Bool(bool),
+    Char(char),
+    I8(i8),
+    I16(i16),
+    I32(i32),
+    I64(i64),
+    I128(i128),
+    Isize(isize),
+    U8(u8),
+    U16(u16),
+    U32(u32),
+    U64(u64),
+    U128(u128),
+    Usize(usize),
+    F32(f32),
+    F64(f64),
     StaticStr(&'static str),
     String(String),
-    Primitive(Primitive),
     Dyn(Box<dyn DynViewPart>),
     Node(Box<[ViewPart]>),
 }
@@ -98,40 +113,6 @@ impl Fragment for ViewPart {
         match self {
             Self::StaticStr(s) => s.fmt(cx, f),
             Self::String(s) => s.fmt(cx, f),
-            Self::Primitive(p) => p.fmt(cx, f),
-            Self::Dyn(d) => d.dyn_fmt(cx, f),
-            Self::Node(parts) => {
-                for part in parts.iter() {
-                    part.fmt(cx, f);
-                }
-            }
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Primitive {
-    Bool(bool),
-    Char(char),
-    I8(i8),
-    I16(i16),
-    I32(i32),
-    I64(i64),
-    I128(i128),
-    Isize(isize),
-    U8(u8),
-    U16(u16),
-    U32(u32),
-    U64(u64),
-    U128(u128),
-    Usize(usize),
-    F32(f32),
-    F64(f64),
-}
-
-impl Fragment for Primitive {
-    fn fmt(&self, cx: &Cx, f: &mut Formatter<'_>) {
-        match self {
             Self::Bool(v) => v.fmt(cx, f),
             Self::Char(v) => v.fmt(cx, f),
             Self::I8(v) => v.fmt(cx, f),
@@ -148,6 +129,12 @@ impl Fragment for Primitive {
             Self::Usize(v) => v.fmt(cx, f),
             Self::F32(v) => v.fmt(cx, f),
             Self::F64(v) => v.fmt(cx, f),
+            Self::Dyn(d) => d.dyn_fmt(cx, f),
+            Self::Node(parts) => {
+                for part in parts.iter() {
+                    part.fmt(cx, f);
+                }
+            }
         }
     }
 }
@@ -189,7 +176,7 @@ macro_rules! impl_into_view_part_primitive {
         impl IntoViewPart for $ty {
             #[inline]
             fn into_view_part(self) -> ViewPart {
-                ViewPart::Primitive(Primitive::$variant(self))
+                ViewPart::$variant(self)
             }
         }
     };
