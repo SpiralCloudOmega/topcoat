@@ -4,7 +4,9 @@ use syn::{
     token::Brace,
 };
 
-use crate::ast::{ViewWriter, node::Node, parse_option::ParseOption, view_writer::MatchArmsBuilder};
+use crate::ast::{
+    ViewWriter, node::Node, parse_option::ParseOption, view_writer::MatchArmsBuilder,
+};
 
 /// A `match expr { ... }` expression in view-body position.
 pub struct NodeMatch {
