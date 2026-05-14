@@ -1,6 +1,5 @@
 use std::path::{Component, Path, PathBuf};
 
-use http::Uri;
 use memchr::memmem;
 use serde::{Deserialize, Serialize};
 
