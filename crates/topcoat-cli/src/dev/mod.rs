@@ -4,7 +4,6 @@ use clap::Args;
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
 use notify::{RecursiveMode, Watcher, recommended_watcher};
-use std::error::Error;
 use std::future::Future;
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -12,6 +11,8 @@ use std::process::Stdio;
 use tokio::process::{Child, Command};
 use tokio::sync::mpsc;
 use tokio::time::Duration;
+
+use crate::cargo::{BuildError, BuildOpts};
 
 #[derive(Args)]
 pub struct DevCommand {}
@@ -153,62 +154,28 @@ fn make_spinner(message: &str) -> ProgressBar {
 async fn build_and_run(initial: bool, dev_url: &str) -> Option<Child> {
     let label = if initial { "building" } else { "rebuilding" };
     let spinner = make_spinner(label);
-
-    let output = Command::new("cargo")
-        .args(["build", "--message-format=json-diagnostic-rendered-ansi"])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .kill_on_drop(true)
-        .spawn()
-        .expect("failed to spawn cargo build")
-        .wait_with_output()
-        .await
-        .expect("failed to wait for cargo build");
-
+    let result = crate::cargo::build_and_read(&BuildOpts::default()).await;
     spinner.finish_and_clear();
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let messages: Vec<serde_json::Value> = stdout
-        .lines()
-        .filter_map(|line| serde_json::from_str(line).ok())
-        .collect();
-
-    if !output.status.success() {
-        eprintln!("  {}", style("build failed").red().bold());
-        eprintln!();
-
-        for msg in &messages {
-            if let Some(rendered) = msg
-                .get("message")
-                .and_then(|m| m.get("rendered"))
-                .and_then(|r| r.as_str())
-            {
+    let (exe, bytes) = match result {
+        Ok(pair) => pair,
+        Err(error) => {
+            eprintln!("  {}", style("build failed").red().bold());
+            eprintln!();
+            if let BuildError::Failed { rendered } = &error {
                 eprint!("{rendered}");
+            } else {
+                eprintln!("  {}", style(error.to_string()).red());
             }
+            eprintln!();
+            eprintln!("  {}", style("waiting for changes...").dim());
+            eprintln!();
+            return None;
         }
-
-        eprintln!();
-        eprintln!("  {}", style("waiting for changes...").dim());
-        eprintln!();
-        return None;
-    }
-
-    let executable = messages.iter().find_map(|msg| {
-        if msg.get("reason")?.as_str()? == "compiler-artifact" && msg.get("executable").is_some() {
-            msg["executable"].as_str().map(String::from)
-        } else {
-            None
-        }
-    });
-
-    let spinner = make_spinner("bundling assets");
-
-    let Some(exe) = executable else {
-        eprintln!("  {}", style("could not determine executable path").red());
-        return None;
     };
 
-    if let Err(err) = bundle_assets(&exe).await {
+    let spinner = make_spinner("bundling assets");
+    if let Err(err) = crate::asset::run_bundle(&bytes, None).await {
         spinner.finish_and_clear();
         eprintln!(
             "  {}",
@@ -219,7 +186,6 @@ async fn build_and_run(initial: bool, dev_url: &str) -> Option<Child> {
         eprintln!();
         return None;
     }
-
     spinner.finish_and_clear();
 
     eprintln!("  {}", style("ready").green().bold());
@@ -240,19 +206,4 @@ async fn build_and_run(initial: bool, dev_url: &str) -> Option<Child> {
 async fn kill_child(child: &mut Child) {
     let _ = child.kill().await;
     let _ = child.wait().await;
-}
-
-async fn bundle_assets(executable: &str) -> Result<(), Box<dyn Error>> {
-    let exe = PathBuf::from(executable);
-    let target_dir = exe.parent().and_then(|p| p.parent()).ok_or_else(|| {
-        std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "could not derive cargo target directory",
-        )
-    })?;
-    let out_dir = target_dir.join("assets");
-    let cache_dir = target_dir.join("topcoat/cache/assets");
-    let bytes = std::fs::read(&exe)?;
-    let bundler = topcoat_asset::Bundler::new(cache_dir);
-    Ok(bundler.bundle(&bytes, &out_dir).await?)
 }

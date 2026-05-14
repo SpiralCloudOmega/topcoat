@@ -1,4 +1,5 @@
 mod asset;
+mod cargo;
 mod dev;
 mod fmt;
 

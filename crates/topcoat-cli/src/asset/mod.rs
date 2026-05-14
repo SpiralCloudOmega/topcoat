@@ -1,9 +1,13 @@
+use std::error::Error;
 use std::path::PathBuf;
-use std::process::Stdio;
 
 use clap::{Args, Subcommand};
 use console::style;
-use tokio::process::Command;
+
+use crate::cargo::BuildOpts;
+
+const OUT_SUBDIR: &str = "assets";
+const CACHE_SUBDIR: &str = "topcoat/cache/assets";
 
 #[derive(Args)]
 pub struct AssetCommand {
@@ -62,21 +66,13 @@ impl AssetCommand {
 }
 
 async fn list(args: ListArgs) {
-    let executable = match build_executable(args.bin.as_deref(), args.package.as_deref()).await {
-        Some(path) => path,
-        None => std::process::exit(1),
+    let opts = BuildOpts {
+        bin: args.bin,
+        package: args.package,
     };
-
-    let bytes = match std::fs::read(&executable) {
-        Ok(bytes) => bytes,
-        Err(error) => {
-            eprintln!(
-                "{}",
-                style(format!("failed to read {executable}: {error}")).red()
-            );
-            std::process::exit(1);
-        }
-    };
+    let (_, bytes) = crate::cargo::build_and_read(&opts)
+        .await
+        .unwrap_or_else(|e| e.print_and_exit());
 
     for asset in topcoat_asset::RawAsset::find_in_binary(&bytes) {
         match asset.source() {
@@ -89,50 +85,45 @@ async fn list(args: ListArgs) {
 }
 
 async fn bundle(args: BundleArgs) {
-    let executable = match build_executable(args.bin.as_deref(), args.package.as_deref()).await {
-        Some(path) => path,
-        None => std::process::exit(1),
+    let opts = BuildOpts {
+        bin: args.bin,
+        package: args.package,
     };
+    let (_, bytes) = crate::cargo::build_and_read(&opts)
+        .await
+        .unwrap_or_else(|e| e.print_and_exit());
 
-    let bytes = match std::fs::read(&executable) {
-        Ok(bytes) => bytes,
+    let out_dir = match run_bundle(&bytes, args.out).await {
+        Ok(path) => path,
         Err(error) => {
             eprintln!(
                 "{}",
-                style(format!("failed to read {executable}: {error}")).red()
+                style(format!("failed to bundle assets: {error}")).red()
             );
             std::process::exit(1);
         }
     };
-
-    let target_dir = match cargo_target_dir().await {
-        Some(path) => path,
-        None => {
-            eprintln!(
-                "{}",
-                style("could not derive cargo target directory; pass --out").red()
-            );
-            std::process::exit(1);
-        }
-    };
-
-    let out_dir = args.out.unwrap_or_else(|| target_dir.join("assets"));
-    let cache_dir = target_dir.join("topcoat/cache/assets");
-
-    let bundler = topcoat_asset::Bundler::new(cache_dir);
-    if let Err(error) = bundler.bundle(&bytes, &out_dir).await {
-        eprintln!(
-            "{}",
-            style(format!("failed to bundle assets: {error}")).red()
-        );
-        std::process::exit(1);
-    }
 
     println!("bundled assets into {}", out_dir.display());
 }
 
+pub(crate) async fn run_bundle(
+    bytes: &[u8],
+    out_override: Option<PathBuf>,
+) -> Result<PathBuf, Box<dyn Error + Send + Sync>> {
+    let target_dir = crate::cargo::target_dir()
+        .await
+        .ok_or("could not derive cargo target directory")?;
+    let out_dir = out_override.unwrap_or_else(|| target_dir.join(OUT_SUBDIR));
+    let cache_dir = target_dir.join(CACHE_SUBDIR);
+    topcoat_asset::Bundler::new(cache_dir)
+        .bundle(bytes, &out_dir)
+        .await?;
+    Ok(out_dir)
+}
+
 async fn clean(args: CleanArgs) {
-    let target_dir = match cargo_target_dir().await {
+    let target_dir = match crate::cargo::target_dir().await {
         Some(path) => path,
         None => {
             eprintln!(
@@ -143,8 +134,8 @@ async fn clean(args: CleanArgs) {
         }
     };
 
-    let out_dir = args.out.unwrap_or_else(|| target_dir.join("assets"));
-    let cache_dir = target_dir.join("topcoat/cache/assets");
+    let out_dir = args.out.unwrap_or_else(|| target_dir.join(OUT_SUBDIR));
+    let cache_dir = target_dir.join(CACHE_SUBDIR);
 
     for dir in [&out_dir, &cache_dir] {
         match std::fs::remove_dir_all(dir) {
@@ -157,82 +148,6 @@ async fn clean(args: CleanArgs) {
                 );
                 std::process::exit(1);
             }
-        }
-    }
-}
-
-async fn cargo_target_dir() -> Option<PathBuf> {
-    let output = Command::new("cargo")
-        .args(["metadata", "--no-deps", "--format-version=1"])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
-        .spawn()
-        .ok()?
-        .wait_with_output()
-        .await
-        .ok()?;
-
-    if !output.status.success() {
-        return None;
-    }
-
-    let msg: serde_json::Value = serde_json::from_slice(&output.stdout).ok()?;
-    msg.get("target_directory")?.as_str().map(PathBuf::from)
-}
-
-async fn build_executable(bin: Option<&str>, package: Option<&str>) -> Option<String> {
-    let mut cmd = Command::new("cargo");
-    cmd.args(["build", "--message-format=json"]);
-    if let Some(bin) = bin {
-        cmd.args(["--bin", bin]);
-    }
-    if let Some(package) = package {
-        cmd.args(["--package", package]);
-    }
-
-    let output = cmd
-        .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
-        .spawn()
-        .expect("failed to spawn cargo build")
-        .wait_with_output()
-        .await
-        .expect("failed to wait for cargo build");
-
-    if !output.status.success() {
-        eprintln!("{}", style("build failed").red().bold());
-        return None;
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let executables: Vec<String> = stdout
-        .lines()
-        .filter_map(|line| {
-            let msg: serde_json::Value = serde_json::from_str(line).ok()?;
-            if msg.get("reason")?.as_str()? == "compiler-artifact" {
-                msg.get("executable")?.as_str().map(String::from)
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    match executables.len() {
-        0 => {
-            eprintln!("{}", style("no executable produced by cargo build").red());
-            None
-        }
-        1 => Some(executables.into_iter().next().unwrap()),
-        _ => {
-            eprintln!(
-                "{}",
-                style("cargo produced multiple binaries; pass --bin or --package to choose one:")
-                    .red()
-            );
-            for exe in &executables {
-                eprintln!("  {exe}");
-            }
-            None
         }
     }
 }
