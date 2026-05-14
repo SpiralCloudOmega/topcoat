@@ -1,16 +1,22 @@
 mod asset;
 mod bundle;
-mod bundler;
 mod cursor;
 mod error;
 mod hash;
 mod manifest;
+mod source;
 
 pub use asset::*;
 pub use bundle::*;
-pub use bundler::*;
 pub use error::*;
 pub use manifest::*;
+pub use source::*;
+
+#[cfg(feature = "bundler")]
+mod bundler;
+
+#[cfg(feature = "bundler")]
+pub use bundler::*;
 
 #[cfg(feature = "tower")]
 mod tower;

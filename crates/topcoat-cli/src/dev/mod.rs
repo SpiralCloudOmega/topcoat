@@ -208,7 +208,7 @@ async fn build_and_run(initial: bool, dev_url: &str) -> Option<Child> {
         return None;
     };
 
-    if let Err(err) = bundle_assets(&exe) {
+    if let Err(err) = bundle_assets(&exe).await {
         spinner.finish_and_clear();
         eprintln!(
             "  {}",
@@ -242,18 +242,17 @@ async fn kill_child(child: &mut Child) {
     let _ = child.wait().await;
 }
 
-fn bundle_assets(executable: &str) -> Result<(), Box<dyn Error>> {
+async fn bundle_assets(executable: &str) -> Result<(), Box<dyn Error>> {
     let exe = PathBuf::from(executable);
-    let out_dir = exe
-        .parent()
-        .and_then(|p| p.parent())
-        .ok_or_else(|| {
-            std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "could not derive cargo target directory",
-            )
-        })?
-        .join("assets");
+    let target_dir = exe.parent().and_then(|p| p.parent()).ok_or_else(|| {
+        std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "could not derive cargo target directory",
+        )
+    })?;
+    let out_dir = target_dir.join("assets");
+    let cache_dir = target_dir.join("topcoat/cache/assets");
     let bytes = std::fs::read(&exe)?;
-    Ok(topcoat_asset::Bundler::bundle(&bytes, &out_dir)?)
+    let bundler = topcoat_asset::Bundler::new(cache_dir);
+    Ok(bundler.bundle(&bytes, &out_dir).await?)
 }

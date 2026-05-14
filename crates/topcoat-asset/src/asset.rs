@@ -1,9 +1,11 @@
 use std::path::{Component, Path, PathBuf};
 
+use http::Uri;
 use memchr::memmem;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    Source,
     cursor::{ConstReader, ConstWriter},
     hash,
 };
@@ -80,6 +82,20 @@ impl RawAsset {
 
     pub fn path(&self) -> &str {
         &self.path
+    }
+
+    pub fn uri(&self) -> Option<Uri> {
+        self.path.parse().ok()
+    }
+
+    /// Classify the asset as a filesystem path or an http(s) URL.
+    pub fn source(&self) -> Source {
+        if let Some(uri) = self.uri()
+            && matches!(uri.scheme_str(), Some("http" | "https"))
+        {
+            return Source::Url(uri);
+        }
+        Source::Path(self.resolved_path())
     }
 
     pub fn crate_name(&self) -> &str {

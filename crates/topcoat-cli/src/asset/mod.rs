@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
 use clap::{Args, Subcommand};
@@ -69,13 +69,12 @@ async fn list(args: ListArgs) {
     };
 
     for asset in topcoat_asset::RawAsset::find_in_binary(&bytes) {
-        println!(
-            "{}",
-            asset
-                .resolved_path()
-                .to_str()
-                .unwrap_or("<non-utf8 file path>")
-        );
+        match asset.source() {
+            topcoat_asset::Source::Path(p) => {
+                println!("{}", p.to_str().unwrap_or("<non-utf8 file path>"))
+            }
+            topcoat_asset::Source::Url(uri) => println!("{uri}"),
+        }
     }
 }
 
@@ -96,21 +95,22 @@ async fn bundle(args: BundleArgs) {
         }
     };
 
-    let out_dir = match args.out {
+    let target_dir = match target_dir(&executable) {
         Some(path) => path,
-        None => match default_out_dir(&executable) {
-            Some(path) => path,
-            None => {
-                eprintln!(
-                    "{}",
-                    style("could not derive cargo target directory; pass --out").red()
-                );
-                std::process::exit(1);
-            }
-        },
+        None => {
+            eprintln!(
+                "{}",
+                style("could not derive cargo target directory; pass --out").red()
+            );
+            std::process::exit(1);
+        }
     };
 
-    if let Err(error) = topcoat_asset::Bundler::bundle(&bytes, &out_dir) {
+    let out_dir = args.out.unwrap_or_else(|| target_dir.join("assets"));
+    let cache_dir = target_dir.join("topcoat/cache/assets");
+
+    let bundler = topcoat_asset::Bundler::new(cache_dir);
+    if let Err(error) = bundler.bundle(&bytes, &out_dir).await {
         eprintln!(
             "{}",
             style(format!("failed to bundle assets: {error}")).red()
@@ -121,10 +121,9 @@ async fn bundle(args: BundleArgs) {
     println!("bundled assets into {}", out_dir.display());
 }
 
-fn default_out_dir(executable: &str) -> Option<PathBuf> {
+fn target_dir(executable: &str) -> Option<PathBuf> {
     let exe = PathBuf::from(executable);
-    let target_dir = exe.parent()?.parent()?;
-    Some(target_dir.join("assets"))
+    exe.parent()?.parent().map(Path::to_path_buf)
 }
 
 async fn build_executable(bin: Option<&str>, package: Option<&str>) -> Option<String> {
