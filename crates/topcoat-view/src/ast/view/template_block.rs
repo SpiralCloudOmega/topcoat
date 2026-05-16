@@ -6,17 +6,18 @@ use syn::{
 
 use crate::ast::{
     ParseOption,
-    view::{Node, ViewWriter, WriteView},
+    view::{ViewWriter, WriteView},
 };
 
-/// A brace-delimited group of nodes: `{ ...nodes... }`. Used as the body of
-/// `if`, `for` and `match` arms.
-pub struct NodeBlock {
+/// A brace-delimited group of template nodes: `{ ...nodes... }`. Used as the
+/// body of `if`, `for` and `match` arms, generic over the kind of node it
+/// contains.
+pub struct TemplateBlock<T> {
     pub brace: Brace,
-    pub children: Vec<Node>,
+    pub children: Vec<T>,
 }
 
-impl WriteView for NodeBlock {
+impl<T: WriteView> WriteView for TemplateBlock<T> {
     fn write(&self, writer: &mut ViewWriter) {
         for child in &self.children {
             child.write(writer);
@@ -24,7 +25,7 @@ impl WriteView for NodeBlock {
     }
 }
 
-impl Parse for NodeBlock {
+impl<T: Parse> Parse for TemplateBlock<T> {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let content;
         Ok(Self {
@@ -40,17 +41,15 @@ impl Parse for NodeBlock {
     }
 }
 
-impl ParseOption for NodeBlock {
+impl<T: Parse> ParseOption for TemplateBlock<T> {
     fn peek(input: ParseStream) -> bool {
         input.peek(Brace)
     }
 }
 
 #[cfg(feature = "pretty")]
-impl topcoat_pretty::PrettyPrint for NodeBlock {
+impl<T: topcoat_pretty::PrettyPrint> topcoat_pretty::PrettyPrint for TemplateBlock<T> {
     fn pretty_print(&self, printer: &mut topcoat_pretty::Printer<'_>) {
-        use topcoat_pretty::Delim;
-
         printer.move_cursor(self.brace.span().open().start());
         "{".pretty_print(printer);
         printer.move_cursor(self.brace.span().open().end());

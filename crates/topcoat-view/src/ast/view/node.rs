@@ -7,8 +7,9 @@ use syn::{
 use crate::ast::{
     ParseOption,
     view::{
-        Component, DocumentType, Element, NodeBlock, TemplateBreak, TemplateContinue, TemplateExpr,
-        TemplateForLoop, TemplateIf, TemplateLet, TemplateMatch, ViewWriter, WriteView,
+        Component, DocumentType, Element, TemplateBlock, TemplateBreak, TemplateContinue,
+        TemplateExpr, TemplateForLoop, TemplateIf, TemplateLet, TemplateMatch, ViewWriter,
+        WriteView,
     },
 };
 
@@ -20,13 +21,13 @@ pub enum Node {
     Element(Box<Element>),
     Component(Component),
     Expr(TemplateExpr),
-    If(TemplateIf<NodeBlock>),
+    If(TemplateIf<Node>),
     Let(TemplateLet),
-    ForLoop(TemplateForLoop<NodeBlock>),
+    ForLoop(TemplateForLoop<Node>),
     Continue(TemplateContinue),
     Break(TemplateBreak),
     Match(TemplateMatch<Node>),
-    Block(NodeBlock),
+    Block(TemplateBlock<Node>),
 }
 
 impl Node {
@@ -70,11 +71,11 @@ impl Parse for Node {
             Self::Component(input.parse()?)
         } else if TemplateExpr::peek(input) {
             Self::Expr(input.parse()?)
-        } else if TemplateIf::<NodeBlock>::peek(input) {
+        } else if TemplateIf::<Node>::peek(input) {
             Self::If(input.parse()?)
         } else if TemplateLet::peek(input) {
             Self::Let(input.parse()?)
-        } else if TemplateForLoop::<NodeBlock>::peek(input) {
+        } else if TemplateForLoop::<Node>::peek(input) {
             Self::ForLoop(input.parse()?)
         } else if TemplateContinue::peek(input) {
             Self::Continue(input.parse()?)
@@ -82,7 +83,7 @@ impl Parse for Node {
             Self::Break(input.parse()?)
         } else if TemplateMatch::<Node>::peek(input) {
             Self::Match(input.parse()?)
-        } else if NodeBlock::peek(input) {
+        } else if TemplateBlock::<Node>::peek(input) {
             Self::Block(input.parse()?)
         } else {
             return Err(syn::Error::new(input.span(), "expected view node"));

@@ -5,20 +5,20 @@ use syn::{
 
 use crate::ast::{
     ParseOption,
-    view::{ViewWriter, WriteView},
+    view::{TemplateBlock, ViewWriter, WriteView},
 };
 
 /// A `for pat in expr { ... }` loop in view-body position. The body is
 /// rendered once per iteration.
-pub struct TemplateForLoop<B> {
+pub struct TemplateForLoop<T> {
     pub for_token: Token![for],
     pub pat: Box<Pat>,
     pub in_token: Token![in],
     pub expr: Box<Expr>,
-    pub body: B,
+    pub body: TemplateBlock<T>,
 }
 
-impl<B: WriteView> WriteView for TemplateForLoop<B> {
+impl<T: WriteView> WriteView for TemplateForLoop<T> {
     fn write(&self, writer: &mut ViewWriter) {
         writer.for_loop(&self.pat, &self.expr, |writer| {
             self.body.write(writer);
@@ -26,7 +26,7 @@ impl<B: WriteView> WriteView for TemplateForLoop<B> {
     }
 }
 
-impl<B: Parse> Parse for TemplateForLoop<B> {
+impl<T: Parse> Parse for TemplateForLoop<T> {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         Ok(Self {
             for_token: input.parse()?,
@@ -38,14 +38,14 @@ impl<B: Parse> Parse for TemplateForLoop<B> {
     }
 }
 
-impl<B: Parse> ParseOption for TemplateForLoop<B> {
+impl<T: Parse> ParseOption for TemplateForLoop<T> {
     fn peek(input: ParseStream) -> bool {
         input.peek(Token![for])
     }
 }
 
 #[cfg(feature = "pretty")]
-impl<B: topcoat_pretty::PrettyPrint> topcoat_pretty::PrettyPrint for TemplateForLoop<B> {
+impl<T: topcoat_pretty::PrettyPrint> topcoat_pretty::PrettyPrint for TemplateForLoop<T> {
     fn pretty_print(&self, printer: &mut topcoat_pretty::Printer<'_>) {
         self.for_token.pretty_print(printer);
         " ".pretty_print(printer);

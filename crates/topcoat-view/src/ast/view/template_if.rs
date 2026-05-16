@@ -5,18 +5,18 @@ use syn::{
 
 use crate::ast::{
     ParseOption,
-    view::{ViewWriter, WriteView},
+    view::{TemplateBlock, ViewWriter, WriteView},
 };
 
 /// An `if cond { ... } else { ... }` chain in view-body position.
-pub struct TemplateIf<B> {
+pub struct TemplateIf<T> {
     pub if_token: Token![if],
     pub cond: syn::Expr,
-    pub then_branch: B,
-    pub else_branch: Option<TemplateElse<B>>,
+    pub then_branch: TemplateBlock<T>,
+    pub else_branch: Option<TemplateElse<T>>,
 }
 
-impl<B: WriteView> WriteView for TemplateIf<B> {
+impl<T: WriteView> WriteView for TemplateIf<T> {
     fn write(&self, writer: &mut ViewWriter) {
         writer.if_else(&self.cond, |then_writer, else_writer| {
             self.then_branch.write(then_writer);
@@ -27,7 +27,7 @@ impl<B: WriteView> WriteView for TemplateIf<B> {
     }
 }
 
-impl<B: Parse> Parse for TemplateIf<B> {
+impl<T: Parse> Parse for TemplateIf<T> {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         Ok(Self {
             if_token: input.parse()?,
@@ -38,14 +38,14 @@ impl<B: Parse> Parse for TemplateIf<B> {
     }
 }
 
-impl<B: Parse> ParseOption for TemplateIf<B> {
+impl<T: Parse> ParseOption for TemplateIf<T> {
     fn peek(input: ParseStream) -> bool {
         input.peek(Token![if])
     }
 }
 
 #[cfg(feature = "pretty")]
-impl<B: topcoat_pretty::PrettyPrint> topcoat_pretty::PrettyPrint for TemplateIf<B> {
+impl<T: topcoat_pretty::PrettyPrint> topcoat_pretty::PrettyPrint for TemplateIf<T> {
     fn pretty_print(&self, printer: &mut topcoat_pretty::Printer<'_>) {
         self.if_token.pretty_print(printer);
         " ".pretty_print(printer);
@@ -57,18 +57,18 @@ impl<B: topcoat_pretty::PrettyPrint> topcoat_pretty::PrettyPrint for TemplateIf<
 }
 
 /// The trailing `else if ...` or `else { ... }` of a [`TemplateIf`].
-pub enum TemplateElse<B> {
+pub enum TemplateElse<T> {
     ElseIf {
         else_token: Token![else],
-        template_if: Box<TemplateIf<B>>,
+        template_if: Box<TemplateIf<T>>,
     },
     Else {
         else_token: Token![else],
-        then_branch: B,
+        then_branch: TemplateBlock<T>,
     },
 }
 
-impl<B: WriteView> WriteView for TemplateElse<B> {
+impl<T: WriteView> WriteView for TemplateElse<T> {
     fn write(&self, writer: &mut ViewWriter) {
         match self {
             Self::ElseIf { template_if, .. } => template_if.write(writer),
@@ -77,7 +77,7 @@ impl<B: WriteView> WriteView for TemplateElse<B> {
     }
 }
 
-impl<B: Parse> Parse for TemplateElse<B> {
+impl<T: Parse> Parse for TemplateElse<T> {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let else_token: Token![else] = input.parse()?;
         if input.peek(Token![if]) {
@@ -94,14 +94,14 @@ impl<B: Parse> Parse for TemplateElse<B> {
     }
 }
 
-impl<B: Parse> ParseOption for TemplateElse<B> {
+impl<T: Parse> ParseOption for TemplateElse<T> {
     fn peek(input: ParseStream) -> bool {
         input.peek(Token![else])
     }
 }
 
 #[cfg(feature = "pretty")]
-impl<B: topcoat_pretty::PrettyPrint> topcoat_pretty::PrettyPrint for TemplateElse<B> {
+impl<T: topcoat_pretty::PrettyPrint> topcoat_pretty::PrettyPrint for TemplateElse<T> {
     fn pretty_print(&self, printer: &mut topcoat_pretty::Printer<'_>) {
         match self {
             Self::ElseIf {
