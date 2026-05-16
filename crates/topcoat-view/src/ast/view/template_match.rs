@@ -10,14 +10,14 @@ use crate::ast::{
 };
 
 /// A `match expr { ... }` expression in view-body position.
-pub struct NodeMatch {
+pub struct TemplateMatch<B> {
     pub match_token: Token![match],
     pub expr: Box<Expr>,
     pub brace_token: Brace,
-    pub arms: Vec<NodeMatchArm>,
+    pub arms: Vec<TemplateMatchArm<B>>,
 }
 
-impl NodeMatch {
+impl TemplateMatch<Node> {
     pub(crate) fn write(&self, writer: &mut ViewWriter) {
         writer.match_expr(&self.expr, |arms| {
             for arm in &self.arms {
@@ -27,7 +27,7 @@ impl NodeMatch {
     }
 }
 
-impl Parse for NodeMatch {
+impl<B: Parse> Parse for TemplateMatch<B> {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let content;
         Ok(Self {
@@ -45,14 +45,17 @@ impl Parse for NodeMatch {
     }
 }
 
-impl ParseOption for NodeMatch {
+impl<B: Parse> ParseOption for TemplateMatch<B> {
     fn peek(input: ParseStream) -> bool {
         input.peek(Token![match])
     }
 }
 
 #[cfg(feature = "pretty")]
-impl topcoat_pretty::PrettyPrint for NodeMatch {
+impl<B> topcoat_pretty::PrettyPrint for TemplateMatch<B>
+where
+    TemplateMatchArm<B>: topcoat_pretty::PrettyPrint,
+{
     fn pretty_print(&self, printer: &mut topcoat_pretty::Printer<'_>) {
         use topcoat_pretty::{BreakMode, Delim};
 
@@ -75,16 +78,16 @@ impl topcoat_pretty::PrettyPrint for NodeMatch {
     }
 }
 
-/// A single arm of a [`NodeMatch`]: `pat (if guard)? => body`.
-pub struct NodeMatchArm {
+/// A single arm of a [`TemplateMatch`]: `pat (if guard)? => body`.
+pub struct TemplateMatchArm<B> {
     pub pat: Pat,
     pub guard: Option<(Token![if], Box<Expr>)>,
     pub fat_arrow_token: Token![=>],
-    pub body: Box<Node>,
+    pub body: Box<B>,
     pub comma: Option<Token![,]>,
 }
 
-impl NodeMatchArm {
+impl TemplateMatchArm<Node> {
     pub(crate) fn write(&self, arms: &mut MatchArmsBuilder) {
         arms.arm(
             &self.pat,
@@ -94,7 +97,7 @@ impl NodeMatchArm {
     }
 }
 
-impl Parse for NodeMatchArm {
+impl<B: Parse> Parse for TemplateMatchArm<B> {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         Ok(Self {
             pat: Pat::parse_multi_with_leading_vert(input)?,
@@ -121,7 +124,7 @@ impl Parse for NodeMatchArm {
 }
 
 #[cfg(feature = "pretty")]
-impl topcoat_pretty::PrettyPrint for NodeMatchArm {
+impl topcoat_pretty::PrettyPrint for TemplateMatchArm<Node> {
     fn pretty_print(&self, printer: &mut topcoat_pretty::Printer<'_>) {
         self.pat.pretty_print(printer);
         " ".pretty_print(printer);

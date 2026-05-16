@@ -10,15 +10,15 @@ use crate::ast::{
 
 /// A `for pat in expr { ... }` loop in view-body position. The body is
 /// rendered once per iteration.
-pub struct NodeForLoop {
+pub struct TemplateForLoop<B> {
     pub for_token: Token![for],
     pub pat: Box<Pat>,
     pub in_token: Token![in],
     pub expr: Box<Expr>,
-    pub body: NodeBlock,
+    pub body: B,
 }
 
-impl NodeForLoop {
+impl TemplateForLoop<NodeBlock> {
     pub(crate) fn write(&self, writer: &mut ViewWriter) {
         writer.for_loop(&self.pat, &self.expr, |writer| {
             self.body.write(writer);
@@ -26,7 +26,7 @@ impl NodeForLoop {
     }
 }
 
-impl Parse for NodeForLoop {
+impl<B: Parse> Parse for TemplateForLoop<B> {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         Ok(Self {
             for_token: input.parse()?,
@@ -38,14 +38,14 @@ impl Parse for NodeForLoop {
     }
 }
 
-impl ParseOption for NodeForLoop {
+impl<B: Parse> ParseOption for TemplateForLoop<B> {
     fn peek(input: ParseStream) -> bool {
         input.peek(Token![for])
     }
 }
 
 #[cfg(feature = "pretty")]
-impl topcoat_pretty::PrettyPrint for NodeForLoop {
+impl<B: topcoat_pretty::PrettyPrint> topcoat_pretty::PrettyPrint for TemplateForLoop<B> {
     fn pretty_print(&self, printer: &mut topcoat_pretty::Printer<'_>) {
         self.for_token.pretty_print(printer);
         " ".pretty_print(printer);
@@ -60,18 +60,18 @@ impl topcoat_pretty::PrettyPrint for NodeForLoop {
 }
 
 /// A `continue;` statement. Parsed for completeness but currently rejected.
-pub struct NodeContinue {
+pub struct TemplateContinue {
     pub expr_continue: ExprContinue,
     pub semi_token: Token![;],
 }
 
-impl NodeContinue {
+impl TemplateContinue {
     pub(crate) fn write(&self, _writer: &mut ViewWriter) {
         todo!();
     }
 }
 
-impl Parse for NodeContinue {
+impl Parse for TemplateContinue {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         Ok(Self {
             expr_continue: input.parse()?,
@@ -80,14 +80,14 @@ impl Parse for NodeContinue {
     }
 }
 
-impl ParseOption for NodeContinue {
+impl ParseOption for TemplateContinue {
     fn peek(input: ParseStream) -> bool {
         input.peek(Token![continue])
     }
 }
 
 #[cfg(feature = "pretty")]
-impl topcoat_pretty::PrettyPrint for NodeContinue {
+impl topcoat_pretty::PrettyPrint for TemplateContinue {
     fn pretty_print(&self, printer: &mut topcoat_pretty::Printer<'_>) {
         self.semi_token.pretty_print(printer);
         todo!();
@@ -95,18 +95,18 @@ impl topcoat_pretty::PrettyPrint for NodeContinue {
 }
 
 /// A `break;` statement. Parsed for completeness but currently rejected.
-pub struct NodeBreak {
+pub struct TemplateBreak {
     pub expr_break: ExprBreak,
     pub semi_token: Token![;],
 }
 
-impl NodeBreak {
+impl TemplateBreak {
     pub(crate) fn write(&self, _writer: &mut ViewWriter) {
         todo!();
     }
 }
 
-impl Parse for NodeBreak {
+impl Parse for TemplateBreak {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         Ok(Self {
             expr_break: input.parse()?,
@@ -115,14 +115,14 @@ impl Parse for NodeBreak {
     }
 }
 
-impl ParseOption for NodeBreak {
+impl ParseOption for TemplateBreak {
     fn peek(input: ParseStream) -> bool {
         input.peek(Token![break])
     }
 }
 
 #[cfg(feature = "pretty")]
-impl topcoat_pretty::PrettyPrint for NodeBreak {
+impl topcoat_pretty::PrettyPrint for TemplateBreak {
     fn pretty_print(&self, printer: &mut topcoat_pretty::Printer<'_>) {
         self.semi_token.pretty_print(printer);
         todo!();
