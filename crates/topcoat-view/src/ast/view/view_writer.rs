@@ -163,10 +163,15 @@ impl ViewWriter {
                             Chunk::Let { pat, expr } => {
                                 quote! { let #pat = #expr; }
                             }
-                            Chunk::If { expr, then_branch: then, else_branch: r#else } => {
+                            Chunk::If {
+                                expr,
+                                then_branch: then,
+                                else_branch: r#else,
+                            } => {
                                 let then_branch = build_vec(&then.chunks);
                                 let else_branch = build_vec(&r#else.chunks);
-                                let else_branch = (!r#else.chunks.is_empty()).then(|| quote! { else { #else_branch } });
+                                let else_branch = (!r#else.chunks.is_empty())
+                                    .then(|| quote! { else { #else_branch } });
                                 quote! {
                                     if #expr {
                                         #then_branch
@@ -197,7 +202,8 @@ impl ViewWriter {
                                     }
                                 }
                             }
-                        }.to_tokens(&mut output);
+                        }
+                        .to_tokens(&mut output);
                     }
                     output
                 }

@@ -26,12 +26,18 @@ impl Asset {
     ///
     /// Prefer calling [`asset!`](crate::asset) directly; this is exposed
     /// for tooling and tests that need to reconstruct an ID from its parts.
-    pub const fn new(crate_name: &str, source_file: &str, path: &str) -> Self {
+    pub const fn new(
+        crate_name: &str,
+        source_file: &str,
+        path: &str,
+        options: &AssetOptions,
+    ) -> Self {
         let mut h = hash::fnv1a(crate_name.as_bytes());
         h = hash::fnv1a_continue(h, b"\0");
         h = hash::fnv1a_continue(h, source_file.as_bytes());
         h = hash::fnv1a_continue(h, b"\0");
         h = hash::fnv1a_continue(h, path.as_bytes());
+        h = options.hash_into(h);
         Self(h)
     }
 }
@@ -260,7 +266,8 @@ macro_rules! asset {
         const CRATE_NAME: &str = env!("CARGO_CRATE_NAME");
         const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
         const SOURCE_FILE: &str = file!();
-        const ID: $crate::Asset = $crate::Asset::new(CRATE_NAME, SOURCE_FILE, PATH);
+        const OPTIONS: $crate::AssetOptions = $crate::asset_options!($($($ao)*)?);
+        const ID: $crate::Asset = $crate::Asset::new(CRATE_NAME, SOURCE_FILE, PATH, &OPTIONS);
 
         #[used]
         pub static ENCODED_ASSET: [u8; $crate::ENCODED_ASSET_SIZE] = $crate::RawAsset::encode(
@@ -269,7 +276,7 @@ macro_rules! asset {
             CRATE_NAME,
             MANIFEST_DIR,
             SOURCE_FILE,
-            &$crate::asset_options!($($($ao)*)?),
+            &OPTIONS,
         );
 
         ID

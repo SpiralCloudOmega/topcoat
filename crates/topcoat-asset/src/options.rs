@@ -1,6 +1,9 @@
 use std::borrow::Cow;
 
-use crate::cursor::{ConstReader, ConstWriter};
+use crate::{
+    cursor::{ConstReader, ConstWriter},
+    hash,
+};
 
 /// Options that control how an asset is bundled.
 ///
@@ -41,6 +44,13 @@ impl AssetOptions {
         w.write_str_opt(cow_as_str(&self.hash));
     }
 
+    pub(crate) const fn hash_into(&self, mut h: u64) -> u64 {
+        h = hash_opt_str(h, cow_as_str(&self.rename));
+        h = hash_opt_str(h, cow_as_str(&self.extension));
+        h = hash_opt_str(h, cow_as_str(&self.hash));
+        h
+    }
+
     pub(crate) fn decode_from(r: &mut ConstReader<'_>) -> Option<Self> {
         Some(Self {
             rename: r.read_str_opt()?.map(|s| Cow::Owned(s.to_owned())),
@@ -55,6 +65,16 @@ const fn cow_as_str<'a>(c: &'a Option<Cow<'static, str>>) -> Option<&'a str> {
         None => None,
         Some(Cow::Borrowed(s)) => Some(s),
         Some(Cow::Owned(s)) => Some(s.as_str()),
+    }
+}
+
+const fn hash_opt_str(h: u64, s: Option<&str>) -> u64 {
+    match s {
+        None => hash::fnv1a_continue(h, &[0]),
+        Some(s) => {
+            let h = hash::fnv1a_continue(h, &[1]);
+            hash::fnv1a_continue(h, s.as_bytes())
+        }
     }
 }
 
