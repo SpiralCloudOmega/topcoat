@@ -5,7 +5,7 @@ use memchr::memmem;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    Source,
+    AssetOptions, Source,
     cursor::{ConstReader, ConstWriter},
     hash,
 };
@@ -32,6 +32,7 @@ pub struct RawAsset {
     crate_name: String,
     manifest_dir: String,
     source_file: String,
+    options: AssetOptions,
 }
 
 pub const ENCODED_ASSET_SIZE: usize = 2048;
@@ -43,6 +44,7 @@ impl RawAsset {
         crate_name: &str,
         manifest_dir: &str,
         source_file: &str,
+        options: &AssetOptions,
     ) -> [u8; ENCODED_ASSET_SIZE] {
         let mut out = [0u8; ENCODED_ASSET_SIZE];
         let mut w = ConstWriter::new(&mut out);
@@ -52,6 +54,7 @@ impl RawAsset {
         w.write_str(crate_name);
         w.write_str(manifest_dir);
         w.write_str(source_file);
+        options.encode_into(&mut w);
         out
     }
 
@@ -64,7 +67,12 @@ impl RawAsset {
             crate_name: r.read_str()?.to_owned(),
             manifest_dir: r.read_str()?.to_owned(),
             source_file: r.read_str()?.to_owned(),
+            options: AssetOptions::decode_from(&mut r)?,
         })
+    }
+
+    pub fn options(&self) -> &AssetOptions {
+        &self.options
     }
 
     pub fn find_in_binary(binary: &[u8]) -> Vec<Self> {
@@ -173,8 +181,14 @@ macro_rules! asset {
         const ID: $crate::Asset = $crate::Asset::new(CRATE_NAME, SOURCE_FILE, PATH);
 
         #[used]
-        pub static ENCODED_ASSET: [u8; $crate::ENCODED_ASSET_SIZE] =
-            $crate::RawAsset::encode(ID, PATH, CRATE_NAME, MANIFEST_DIR, SOURCE_FILE);
+        pub static ENCODED_ASSET: [u8; $crate::ENCODED_ASSET_SIZE] = $crate::RawAsset::encode(
+            ID,
+            PATH,
+            CRATE_NAME,
+            MANIFEST_DIR,
+            SOURCE_FILE,
+            &$crate::AssetOptions::NONE,
+        );
 
         ID
     }};

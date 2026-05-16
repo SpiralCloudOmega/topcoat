@@ -4,12 +4,14 @@ mod cursor;
 mod error;
 mod hash;
 mod manifest;
+mod options;
 mod source;
 
 pub use asset::*;
 pub use bundle::*;
 pub use error::*;
 pub use manifest::*;
+pub use options::*;
 pub use source::*;
 
 #[cfg(feature = "bundler")]

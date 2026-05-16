@@ -30,6 +30,16 @@ impl<'a> ConstWriter<'a> {
         self.write_u16_le(s.len() as u16);
         self.write_bytes(s.as_bytes());
     }
+
+    pub const fn write_str_opt(&mut self, s: Option<&str>) {
+        match s {
+            Some(s) => {
+                self.write_bytes(&[1]);
+                self.write_str(s);
+            }
+            None => self.write_bytes(&[0]),
+        }
+    }
 }
 
 /// Const-friendly cursor for reading primitives out of a byte buffer.
@@ -83,6 +93,20 @@ impl<'a> ConstReader<'a> {
         match std::str::from_utf8(bytes) {
             Ok(s) => Some(s),
             Err(_) => None,
+        }
+    }
+
+    pub const fn read_str_opt(&mut self) -> Option<Option<&'a str>> {
+        let Some(tag) = self.read_bytes(1) else {
+            return None;
+        };
+        match tag[0] {
+            0 => Some(None),
+            1 => match self.read_str() {
+                Some(s) => Some(Some(s)),
+                None => None,
+            },
+            _ => None,
         }
     }
 

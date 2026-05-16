@@ -55,13 +55,13 @@ impl<T> Deref for Unescaped<T> {
 }
 
 impl IntoViewParts for Unescaped<&'static str> {
-    fn into_view_part(self) -> impl Iterator<Item = ViewPart> {
+    fn into_view_parts(self) -> impl Iterator<Item = ViewPart> {
         once(ViewPart::UnescapedStaticStr(self))
     }
 }
 
 impl IntoViewParts for Unescaped<String> {
-    fn into_view_part(self) -> impl Iterator<Item = ViewPart> {
+    fn into_view_parts(self) -> impl Iterator<Item = ViewPart> {
         once(ViewPart::UnescapedString(self))
     }
 }

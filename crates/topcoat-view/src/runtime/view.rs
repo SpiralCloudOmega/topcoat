@@ -33,19 +33,7 @@ impl View {
     /// Builds a `View` from any value that can be converted into [`ViewPart`]s.
     #[inline]
     pub fn new(parts: impl IntoViewParts) -> Self {
-        let mut iter = parts.into_view_part();
-        let Some(first) = iter.next() else {
-            return Self {
-                part: ViewPart::Empty,
-            };
-        };
-        let Some(second) = iter.next() else {
-            return Self { part: first };
-        };
-        let parts: Box<[ViewPart]> = [first, second].into_iter().chain(iter).collect();
-        Self {
-            part: ViewPart::Node(parts),
-        }
+        parts.into_view_parts().collect()
     }
 
     /// Returns a `View` that renders to an empty string.
@@ -79,6 +67,25 @@ impl Fragment for View {
     #[inline]
     fn size_hint(&self) -> usize {
         self.part.size_hint()
+    }
+}
+
+impl FromIterator<ViewPart> for View {
+    /// Avoids allocating when the iterator yields zero or one element.
+    fn from_iter<I: IntoIterator<Item = ViewPart>>(iter: I) -> Self {
+        let mut iter = iter.into_iter();
+        let Some(first) = iter.next() else {
+            return Self {
+                part: ViewPart::Empty,
+            };
+        };
+        let Some(second) = iter.next() else {
+            return Self { part: first };
+        };
+        let parts: Box<[ViewPart]> = [first, second].into_iter().chain(iter).collect();
+        Self {
+            part: ViewPart::Node(parts),
+        }
     }
 }
 
@@ -214,19 +221,19 @@ impl Fragment for ViewPart {
 }
 
 pub trait IntoViewParts {
-    fn into_view_part(self) -> impl Iterator<Item = ViewPart>;
+    fn into_view_parts(self) -> impl Iterator<Item = ViewPart>;
 }
 
 impl IntoViewParts for View {
     #[inline]
-    fn into_view_part(self) -> impl Iterator<Item = ViewPart> {
+    fn into_view_parts(self) -> impl Iterator<Item = ViewPart> {
         once(self.part)
     }
 }
 
 impl IntoViewParts for ViewPart {
     #[inline]
-    fn into_view_part(self) -> impl Iterator<Item = ViewPart> {
+    fn into_view_parts(self) -> impl Iterator<Item = ViewPart> {
         once(self)
     }
 }
@@ -235,49 +242,49 @@ impl<T> IntoViewParts for &T
 where
     T: IntoViewParts + Copy,
 {
-    fn into_view_part(self) -> impl Iterator<Item = ViewPart> {
-        (*self).into_view_part()
+    fn into_view_parts(self) -> impl Iterator<Item = ViewPart> {
+        (*self).into_view_parts()
     }
 }
 
 impl IntoViewParts for &str {
     #[inline]
-    fn into_view_part(self) -> impl Iterator<Item = ViewPart> {
+    fn into_view_parts(self) -> impl Iterator<Item = ViewPart> {
         once(ViewPart::String(self.to_owned()))
     }
 }
 
 impl IntoViewParts for String {
     #[inline]
-    fn into_view_part(self) -> impl Iterator<Item = ViewPart> {
+    fn into_view_parts(self) -> impl Iterator<Item = ViewPart> {
         once(ViewPart::String(self))
     }
 }
 
 impl IntoViewParts for Box<dyn DynViewPart> {
     #[inline]
-    fn into_view_part(self) -> impl Iterator<Item = ViewPart> {
+    fn into_view_parts(self) -> impl Iterator<Item = ViewPart> {
         once(ViewPart::BoxDyn(self))
     }
 }
 
 impl<const N: usize> IntoViewParts for [ViewPart; N] {
     #[inline]
-    fn into_view_part(self) -> impl Iterator<Item = ViewPart> {
+    fn into_view_parts(self) -> impl Iterator<Item = ViewPart> {
         self.into_iter()
     }
 }
 
 impl IntoViewParts for Box<[ViewPart]> {
     #[inline]
-    fn into_view_part(self) -> impl Iterator<Item = ViewPart> {
+    fn into_view_parts(self) -> impl Iterator<Item = ViewPart> {
         self.into_iter()
     }
 }
 
 impl<const N: usize> IntoViewParts for Box<[ViewPart; N]> {
     #[inline]
-    fn into_view_part(self) -> impl Iterator<Item = ViewPart> {
+    fn into_view_parts(self) -> impl Iterator<Item = ViewPart> {
         (*self).into_iter()
     }
 }
@@ -286,7 +293,7 @@ macro_rules! impl_into_view_parts_primitive {
     ($variant:ident, $ty:ty) => {
         impl IntoViewParts for $ty {
             #[inline]
-            fn into_view_part(self) -> impl Iterator<Item = ViewPart> {
+            fn into_view_parts(self) -> impl Iterator<Item = ViewPart> {
                 once(ViewPart::$variant(self))
             }
         }
@@ -314,7 +321,7 @@ impl<T> IntoViewParts for Option<T>
 where
     T: IntoViewParts,
 {
-    fn into_view_part(self) -> impl Iterator<Item = ViewPart> {
-        self.into_iter().flat_map(IntoViewParts::into_view_part)
+    fn into_view_parts(self) -> impl Iterator<Item = ViewPart> {
+        self.into_iter().flat_map(IntoViewParts::into_view_parts)
     }
 }

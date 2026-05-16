@@ -28,7 +28,7 @@ impl Fragment for Asset {
 }
 
 impl IntoViewParts for Asset {
-    fn into_view_part(self) -> impl Iterator<Item = ViewPart> {
+    fn into_view_parts(self) -> impl Iterator<Item = ViewPart> {
         once(ViewPart::BoxDyn(Box::new(self)))
     }
 }

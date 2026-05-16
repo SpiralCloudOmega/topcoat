@@ -102,31 +102,71 @@ impl ViewWriter {
         self.flush();
 
         let format_expr = {
-            let needs_vec = self
-                .chunks
-                .iter()
-                .any(|chunk| !matches!(chunk, Chunk::Expr(..)));
+            fn needs_vec(chunks: &[Chunk]) -> bool {
+                chunks.iter().any(|chunk| match chunk {
+                    Chunk::Expr(_) => false,
+                    Chunk::For { body, .. } => needs_vec(&body.chunks),
+                    Chunk::Let { .. } | Chunk::If { .. } | Chunk::Match { .. } => true,
+                })
+            }
 
-            if needs_vec {
-                let capacity = self
-                    .chunks
-                    .iter()
-                    .filter(|chunk| matches!(chunk, Chunk::Expr(..)))
-                    .count();
+            if self.chunks.is_empty() {
+                // Optimized path: The view has no content.
+                quote! { ::topcoat::view::View::empty() }
+            } else if self.chunks.len() == 1 && matches!(self.chunks[0], Chunk::Expr(_)) {
+                // Optimized path: The view can be constructed from a single expression.
+                let Chunk::Expr(entry) = &self.chunks[0] else {
+                    unreachable!()
+                };
+                quote! { ::topcoat::view::View::new(#entry) }
+            } else if !needs_vec(&self.chunks) {
+                // No `let`/`if`/`match`: build a chained iterator of parts.
+                fn build_chain(chunks: &[Chunk]) -> TokenStream {
+                    fn chunk_to_iter(chunk: &Chunk) -> TokenStream {
+                        match chunk {
+                            Chunk::Expr(expr) => quote! {
+                                ::topcoat::view::IntoViewParts::into_view_parts(#expr)
+                            },
+                            Chunk::For { pat, expr, body } => {
+                                let body_iter = build_chain(&body.chunks);
+                                quote! {
+                                    ::core::iter::IntoIterator::into_iter(#expr)
+                                        .flat_map(|#pat| #body_iter)
+                                }
+                            }
+                            _ => unreachable!("`let`/`if`/`match` require the vec branch"),
+                        }
+                    }
 
-                fn recursive(chunks: &[Chunk]) -> TokenStream {
+                    if chunks.is_empty() {
+                        return quote! {
+                            ::core::iter::empty::<::topcoat::view::ViewPart>()
+                        };
+                    }
+                    let first = chunk_to_iter(&chunks[0]);
+                    let rest = chunks[1..].iter().map(chunk_to_iter);
+                    quote! { #first #(.chain(#rest))* }
+                }
+
+                let chain = build_chain(&self.chunks);
+                quote! {
+                    ::core::iter::Iterator::collect::<::topcoat::view::View>(#chain)
+                }
+            } else {
+                // `let`/`if`/`match` need imperative control flow; build a `Vec`.
+                fn build_vec(chunks: &[Chunk]) -> TokenStream {
                     let mut output = TokenStream::new();
                     for chunk in chunks {
                         match chunk {
                             Chunk::Expr(expr) => {
-                                quote! { __v.push(::topcoat::view::IntoViewPart::into_view_part(#expr)); }
+                                quote! { __v.extend(::topcoat::view::IntoViewParts::into_view_parts(#expr)); }
                             }
                             Chunk::Let { pat, expr } => {
                                 quote! { let #pat = #expr; }
                             }
                             Chunk::If { expr, then_branch: then, else_branch: r#else } => {
-                                let then_branch = recursive(&then.chunks);
-                                let else_branch = recursive(&r#else.chunks);
+                                let then_branch = build_vec(&then.chunks);
+                                let else_branch = build_vec(&r#else.chunks);
                                 let else_branch = (!r#else.chunks.is_empty()).then(|| quote! { else { #else_branch } });
                                 quote! {
                                     if #expr {
@@ -136,7 +176,7 @@ impl ViewWriter {
                                 }
                             }
                             Chunk::For { pat, expr, body } => {
-                                let body = recursive(&body.chunks);
+                                let body = build_vec(&body.chunks);
                                 quote! {
                                     for #pat in #expr {
                                         #body
@@ -147,7 +187,7 @@ impl ViewWriter {
                                 let arm_tokens = arms.iter().map(|arm| {
                                     let pat = &arm.pat;
                                     let guard = arm.guard.as_ref().map(|g| quote! { if #g });
-                                    let body = recursive(&arm.body.chunks);
+                                    let body = build_vec(&arm.body.chunks);
                                     quote! {
                                         #pat #guard => { #body }
                                     }
@@ -163,34 +203,18 @@ impl ViewWriter {
                     output
                 }
 
-                let statements = recursive(&self.chunks);
+                let capacity = self
+                    .chunks
+                    .iter()
+                    .filter(|chunk| matches!(chunk, Chunk::Expr(..)))
+                    .count();
+                let statements = build_vec(&self.chunks);
 
                 quote! {{
-                    let mut __v = Vec::with_capacity(#capacity);
+                    let mut __v = ::std::vec::Vec::with_capacity(#capacity);
                     #statements
                     ::topcoat::view::View::new(__v.into_boxed_slice())
                 }}
-            } else {
-                if self.chunks.is_empty() {
-                    // Optimized path: The view has no content.
-                    quote! { ::topcoat::view::View::empty() }
-                } else if self.chunks.len() == 1 {
-                    // Optimized path: The view can be constructed from a single expression.
-                    let Chunk::Expr(entry) = self.chunks.first().unwrap() else {
-                        panic!("expected expression")
-                    };
-                    quote! { ::topcoat::view::View::new(#entry) }
-                } else {
-                    let entries = self.chunks.iter().map(|chunk| match chunk {
-                        Chunk::Expr(chunk) => chunk,
-                        _ => panic!("expected expression"),
-                    });
-                    quote! {{
-                        ::topcoat::view::View::new([
-                            #(::topcoat::view::IntoViewPart::into_view_part(#entries),)*
-                        ])
-                    }}
-                }
             }
         };
 
