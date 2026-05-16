@@ -1,22 +1,22 @@
 use proc_macro2::TokenStream;
-use quote::{ToTokens, quote};
+use quote::ToTokens;
 use syn::{
-    Expr, LitStr, parenthesized,
+    LitStr,
     parse::{Parse, ParseStream},
     token::Paren,
 };
 
-use crate::ast::view::view_writer::ViewWriter;
+use crate::ast::view::{TemplateExpr, view_writer::ViewWriter};
 
 pub enum AttributeValue {
-    Expr { paren: Paren, expr: Box<Expr> },
+    Expr(Box<TemplateExpr>),
     LitStr(LitStr),
 }
 
 impl AttributeValue {
     pub(crate) fn write(&self, writer: &mut ViewWriter) {
         match self {
-            Self::Expr { expr, .. } => writer.write_expr(expr.to_token_stream()),
+            Self::Expr(inner) => writer.write_expr(inner.expr.to_token_stream()),
             Self::LitStr(inner) => writer.write_str(&inner.value()),
         }
     }
@@ -26,11 +26,7 @@ impl Parse for AttributeValue {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let lookahead = input.lookahead1();
         if lookahead.peek(Paren) {
-            let content;
-            Ok(Self::Expr {
-                paren: parenthesized!(content in input),
-                expr: content.parse()?,
-            })
+            Ok(Self::Expr(input.parse()?))
         } else if lookahead.peek(LitStr) {
             Ok(Self::LitStr(input.parse()?))
         } else {
@@ -42,7 +38,7 @@ impl Parse for AttributeValue {
 impl ToTokens for AttributeValue {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            Self::Expr { expr, .. } => quote! {{ #expr }}.to_tokens(tokens),
+            Self::Expr(inner) => inner.to_tokens(tokens),
             Self::LitStr(inner) => inner.to_tokens(tokens),
         }
     }
@@ -52,12 +48,7 @@ impl ToTokens for AttributeValue {
 impl topcoat_pretty::PrettyPrint for AttributeValue {
     fn pretty_print(&self, printer: &mut topcoat_pretty::Printer<'_>) {
         match self {
-            Self::Expr { paren, expr } => {
-                use topcoat_pretty::{BreakMode, Delim};
-                paren.pretty_print(printer, Some(BreakMode::Inconsistent), |printer| {
-                    expr.pretty_print(printer);
-                });
-            }
+            Self::Expr(inner) => inner.pretty_print(printer),
             Self::LitStr(inner) => inner.pretty_print(printer),
         }
     }

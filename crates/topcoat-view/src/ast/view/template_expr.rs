@@ -1,4 +1,5 @@
-use quote::ToTokens;
+use proc_macro2::TokenStream;
+use quote::{ToTokens, quote};
 use syn::{
     parenthesized,
     parse::{Parse, ParseStream},
@@ -6,22 +7,20 @@ use syn::{
 
 use crate::ast::{ParseOption, view::ViewWriter};
 
-/// A parenthesized Rust expression embedded as a child node, e.g. `(name)` or
-/// `(slot.await)`. The value is rendered through
-/// [`Fragment`](crate::runtime::Fragment) (i.e. escaped by default).
-pub struct NodeExpr {
+/// A parenthesized Rust expression embedded as a child node, e.g. `(5 + 6)`.
+pub struct TemplateExpr {
     pub paren: syn::token::Paren,
     pub expr: syn::Expr,
 }
 
-impl NodeExpr {
+impl TemplateExpr {
     pub(crate) fn write(&self, writer: &mut ViewWriter) {
         let expr = &self.expr;
         writer.write_expr(expr.to_token_stream());
     }
 }
 
-impl Parse for NodeExpr {
+impl Parse for TemplateExpr {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let content;
         Ok(Self {
@@ -31,14 +30,21 @@ impl Parse for NodeExpr {
     }
 }
 
-impl ParseOption for NodeExpr {
+impl ParseOption for TemplateExpr {
     fn peek(input: ParseStream) -> bool {
         input.peek(syn::token::Paren)
     }
 }
 
+impl ToTokens for TemplateExpr {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let expr = &self.expr;
+        quote! { { #expr } }.to_tokens(tokens)
+    }
+}
+
 #[cfg(feature = "pretty")]
-impl topcoat_pretty::PrettyPrint for NodeExpr {
+impl topcoat_pretty::PrettyPrint for TemplateExpr {
     fn pretty_print(&self, printer: &mut topcoat_pretty::Printer<'_>) {
         "(".pretty_print(printer);
         self.expr.pretty_print(printer);

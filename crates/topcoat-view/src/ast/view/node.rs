@@ -7,8 +7,8 @@ use syn::{
 use crate::ast::{
     ParseOption,
     view::{
-        Component, DocumentType, Element, NodeBlock, NodeBreak, NodeContinue, NodeExpr,
-        NodeForLoop, NodeIf, NodeLet, NodeMatch, ViewWriter,
+        Component, DocumentType, Element, NodeBlock, NodeBreak, NodeContinue, NodeForLoop, NodeIf,
+        NodeLet, NodeMatch, TemplateExpr, ViewWriter,
     },
 };
 
@@ -19,7 +19,7 @@ pub enum Node {
     DocumentType(DocumentType),
     Element(Box<Element>),
     Component(Component),
-    Expr(NodeExpr),
+    Expr(TemplateExpr),
     If(NodeIf),
     Let(NodeLet),
     ForLoop(NodeForLoop),
@@ -66,7 +66,7 @@ impl Parse for Node {
             Self::Element(input.parse()?)
         } else if Component::peek(input) {
             Self::Component(input.parse()?)
-        } else if NodeExpr::peek(input) {
+        } else if TemplateExpr::peek(input) {
             Self::Expr(input.parse()?)
         } else if NodeIf::peek(input) {
             Self::If(input.parse()?)
