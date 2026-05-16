@@ -51,12 +51,20 @@ impl FmtCommand {
             }
 
             let mut count = 0;
+            let mut modified = 0;
             for file in &files {
-                if let Err(error) = format_file(file, &registry) {
-                    eprintln!("{}", style(format!("{}: {error}", file.display())).red());
-                    std::process::exit(1);
-                } else {
-                    count += 1;
+                match format_file(file, &registry) {
+                    Ok(true) => {
+                        count += 1;
+                        modified += 1;
+                    }
+                    Ok(false) => {
+                        count += 1;
+                    }
+                    Err(error) => {
+                        eprintln!("{}", style(format!("{}: {error}", file.display())).red());
+                        std::process::exit(1);
+                    }
                 }
             }
 
@@ -69,7 +77,7 @@ impl FmtCommand {
                 eprintln!(
                     "{}",
                     style(format!(
-                        "successfully formatted {count} files in {:.0?}",
+                        "successfully formatted {count} files ({modified} modified) in {:.0?}",
                         start.elapsed()
                     ))
                     .green()
@@ -88,9 +96,13 @@ impl FmtCommand {
     }
 }
 
-fn format_file(path: &PathBuf, registry: &Registry) -> Result<(), error::Error> {
+fn format_file(path: &PathBuf, registry: &Registry) -> Result<bool, error::Error> {
     let input = std::fs::read_to_string(path)?;
     let output = pretty_print_str(registry, &input)?;
-    std::fs::write(path, output)?;
-    Ok(())
+    if output != input {
+        std::fs::write(path, output)?;
+        Ok(true)
+    } else {
+        Ok(false)
+    }
 }

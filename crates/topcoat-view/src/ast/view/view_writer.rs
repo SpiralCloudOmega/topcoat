@@ -221,6 +221,7 @@ impl ViewWriter {
                 let statements = build_vec(&self.chunks);
 
                 quote! {{
+                    use ::topcoat::view::IntoViewParts;
                     let mut __v = ::std::vec::Vec::with_capacity(#capacity);
                     #statements
                     ::topcoat::view::View::new(__v.into_boxed_slice())

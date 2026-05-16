@@ -22,7 +22,7 @@ type BuildFut = Pin<Box<dyn Future<Output = Option<Child>> + Send>>;
 impl DevCommand {
     pub async fn run(self) {
         let listener = broadcast_server::bind().await;
-        let dev_url = format!("ws://{}", listener.local_addr().unwrap());
+        let dev_url = format!("http://{}", listener.local_addr().unwrap());
         tokio::spawn(broadcast_server::run(listener));
 
         eprintln!();
