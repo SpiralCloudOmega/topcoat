@@ -1,4 +1,5 @@
 mod attribute;
+mod attribute_value;
 mod component;
 mod component_tag;
 mod document_type;
@@ -15,6 +16,7 @@ mod node_match;
 mod view_writer;
 
 pub use attribute::*;
+pub use attribute_value::*;
 pub use component::*;
 pub use component_tag::*;
 pub use document_type::*;
@@ -28,7 +30,6 @@ pub use node_for_loop::*;
 pub use node_if::*;
 pub use node_let::*;
 pub use node_match::*;
-pub use view::*;
 pub(crate) use view_writer::*;
 
 use proc_macro2::TokenStream;
