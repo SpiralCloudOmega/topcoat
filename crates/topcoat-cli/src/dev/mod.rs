@@ -60,13 +60,13 @@ impl DevCommand {
             tokio::select! {
                 _ = tokio::signal::ctrl_c() => {
                     eprintln!();
-                    let spinner = make_spinner("shutting down...");
+                    let spinner = Spinner::new("shutting down...");
                     eprintln!();
                     drop(current_build.take());
                     if let Some(c) = &mut child {
                         kill_child(c).await;
                     }
-                    spinner.finish_and_clear();
+                    drop(spinner);
                     eprintln!();
                     break;
                 }
@@ -138,28 +138,45 @@ async fn discover_watch_dirs() -> Vec<PathBuf> {
     }
 }
 
-fn make_spinner(message: &str) -> ProgressBar {
-    let spinner = ProgressBar::new_spinner();
-    spinner.set_style(
-        ProgressStyle::default_spinner()
-            .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
-            .template("  {spinner:.cyan} {msg}")
-            .unwrap(),
-    );
-    spinner.set_message(message.to_string());
-    spinner.enable_steady_tick(Duration::from_millis(80));
-    spinner
+struct Spinner(ProgressBar);
+
+impl Spinner {
+    fn new(message: &str) -> Self {
+        let spinner = ProgressBar::new_spinner();
+        spinner.set_style(
+            ProgressStyle::default_spinner()
+                .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
+                .template("  {spinner:.cyan} {msg}")
+                .unwrap(),
+        );
+        spinner.set_message(message.to_string());
+        spinner.enable_steady_tick(Duration::from_millis(80));
+        Self(spinner)
+    }
+}
+
+impl std::ops::Deref for Spinner {
+    type Target = ProgressBar;
+    fn deref(&self) -> &ProgressBar {
+        &self.0
+    }
+}
+
+impl Drop for Spinner {
+    fn drop(&mut self) {
+        self.0.finish_and_clear();
+    }
 }
 
 async fn build_and_run(initial: bool, dev_url: &str) -> Option<Child> {
     let label = if initial { "building" } else { "rebuilding" };
-    let spinner = make_spinner(label);
+    let spinner = Spinner::new(label);
     let progress_spinner = spinner.clone();
     let result = crate::cargo::build_and_read(&BuildOpts::default(), move |cur, total| {
         progress_spinner.set_message(format!("{label} ({cur}/{total})"));
     })
     .await;
-    spinner.finish_and_clear();
+    drop(spinner);
 
     let (exe, bytes) = match result {
         Ok(pair) => pair,
@@ -178,9 +195,11 @@ async fn build_and_run(initial: bool, dev_url: &str) -> Option<Child> {
         }
     };
 
-    let spinner = make_spinner("bundling assets");
-    if let Err(err) = crate::asset::run_bundle(&bytes, None).await {
-        spinner.finish_and_clear();
+    let spinner = Spinner::new("bundling assets");
+    let bundle_result = crate::asset::run_bundle(&bytes, None).await;
+    drop(spinner);
+
+    if let Err(err) = bundle_result {
         eprintln!(
             "  {}",
             style(format!("failed to bundle assets: {err}"))
@@ -190,7 +209,6 @@ async fn build_and_run(initial: bool, dev_url: &str) -> Option<Child> {
         eprintln!();
         return None;
     }
-    spinner.finish_and_clear();
 
     eprintln!("  {}", style("ready").green().bold());
     eprintln!();
