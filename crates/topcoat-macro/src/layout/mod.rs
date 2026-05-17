@@ -95,7 +95,10 @@ impl ToTokens for Layout {
         match attr.path.as_ref() {
             Some(path) => quote! {
                 #[allow(non_upper_case_globals)]
-                const #ident: ::topcoat::router::Layout = ::topcoat::router::Layout::new(#path, #render);
+                const #ident: ::topcoat::router::Layout = ::topcoat::router::Layout::new(
+                    ::std::borrow::Cow::Borrowed(::topcoat::router::Path::new(#path)),
+                    #render,
+                );
             },
             None => quote! {
                 #[allow(non_upper_case_globals)]

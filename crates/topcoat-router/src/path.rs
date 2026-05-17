@@ -4,7 +4,7 @@ use std::{
     ops::{AddAssign, Deref},
 };
 
-use ref_cast::RefCast;
+use ref_cast::{RefCastCustom, ref_cast_custom};
 
 /// A borrowed route path, similar to [`std::path::Path`] but for URL paths.
 ///
@@ -26,7 +26,7 @@ use ref_cast::RefCast;
 /// assert_eq!(path.segments().count(), 3);
 /// assert_eq!(path.to_axum_path(), "/users/{id}");
 /// ```
-#[derive(Debug, PartialEq, Eq, Hash, RefCast)]
+#[derive(Debug, PartialEq, Eq, Hash, RefCastCustom)]
 #[repr(transparent)]
 pub struct Path {
     inner: str,
@@ -38,13 +38,16 @@ impl Path {
     /// The root path `"/"` is normalized to an empty inner representation so that
     /// it produces zero segments, matching the convention that the root layout
     /// applies to all pages.
-    pub fn new<S: AsRef<str> + ?Sized>(s: &S) -> &Self {
-        let s = s.as_ref();
-        if s == "/" {
-            return Self::ref_cast("");
-        }
-        Self::ref_cast(s)
+    pub const fn new(s: &str) -> &Self {
+        let s = match s.as_bytes() {
+            [b'/'] => "",
+            _ => s,
+        };
+        Self::from_str(s)
     }
+
+    #[ref_cast_custom]
+    const fn from_str(s: &str) -> &Self;
 
     /// Returns an iterator over the [`PathSegment`]s of this path.
     ///
@@ -188,7 +191,7 @@ impl Deref for PathBuf {
     type Target = Path;
 
     fn deref(&self) -> &Self::Target {
-        Path::ref_cast(&self.inner)
+        Path::new(&self.inner)
     }
 }
 
