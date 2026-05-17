@@ -107,6 +107,7 @@ impl BuildConfig {
         let cwd = self.cwd.unwrap_or_else(|| "./src".into());
 
         println!("cargo:rerun-if-changed={}", input.display());
+        println!("cargo:rerun-if-changed={}", cwd.display());
 
         let mut command = Command::new(&cli);
         command
