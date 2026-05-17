@@ -90,6 +90,48 @@ mod about {
     }
 }
 
+fn search_results(cx: &Cx, input: &str) -> Vec<&'static str> {
+    let all = [
+        "apple",
+        "apricot",
+        "banana",
+        "blackberry",
+        "blueberry",
+        "cherry",
+        "coconut",
+        "cranberry",
+        "date",
+        "dragonfruit",
+        "elderberry",
+        "fig",
+        "grape",
+        "grapefruit",
+        "guava",
+        "honeydew",
+        "kiwi",
+        "lemon",
+        "lime",
+        "lychee",
+        "mango",
+        "nectarine",
+        "orange",
+        "papaya",
+        "passionfruit",
+        "peach",
+        "pear",
+        "persimmon",
+        "pineapple",
+        "plum",
+        "pomegranate",
+        "raspberry",
+        "strawberry",
+        "tangerine",
+        "watermelon",
+    ];
+    let needle = input.to_lowercase();
+    all.into_iter().filter(|s| s.contains(&needle)).collect()
+}
+
 #[query_params]
 struct DatastarQueryParams {
     datastar: String,
@@ -115,8 +157,9 @@ async fn content(cx: &Cx) -> Result<Response> {
 
     let result: Result = view! {
         <div id="content">
-            "lol"
-            (kek.input)
+            for result in search_results(cx, &kek.input).into_iter().take(5) {
+                <div>(result)</div>
+            }
         </div>
     };
     Ok(Html(result?.render(cx)).into_response())
@@ -125,9 +168,17 @@ async fn content(cx: &Cx) -> Result<Response> {
 #[page]
 async fn home_page(cx: &Cx) -> Result {
     view! {
-        <input class="border border-[black]" data-bind="test">
-        <div data-effect="[true, $test] && @get('/content', { payload: { input: $test }})">
-            <div id="content">"loading..."</div>
+        <input
+        class="m-2
+        border border-[black]"
+        data-bind="test"
+        data-on:focus="$open = true"
+        data-on:blur="$open = false"
+        >
+        <div class="border border-[gray] rounded-md m-2 shadow-sm" data-show="$open">
+            <div data-effect="[true, $test] && @get('/content', { payload: { input: $test }})">
+                <div id="content">"loading..."</div>
+            </div>
         </div>
     }
 }
