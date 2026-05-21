@@ -56,11 +56,11 @@ impl ToTokens for Island {
 
         quote! {
             #[allow(non_upper_case_globals)]
-            const #ident: ::topcoat::view::Island<
+            const #ident: ::topcoat::runtime::Island<
                 (#(#signal_types,)*),
                 <#return_ty as ::topcoat::internal::ResultExt>::E,
-            > = ::topcoat::view::Island::new(
-                ::topcoat::view::IslandId::new(#id),
+            > = ::topcoat::runtime::Island::new(
+                ::topcoat::runtime::IslandId::new(#id),
                 |cx, signals| {
                     #item
 
@@ -73,7 +73,7 @@ impl ToTokens for Island {
         if cfg!(feature = "discover") {
             quote! {
                 ::topcoat::internal::inventory::submit! {
-                    &#ident as &'static dyn ::topcoat::view::DynIsland
+                    &#ident as &'static dyn ::topcoat::runtime::DynIsland
                 }
             }
             .to_tokens(tokens);

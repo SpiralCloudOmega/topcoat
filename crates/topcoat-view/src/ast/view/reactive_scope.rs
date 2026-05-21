@@ -46,9 +46,9 @@ impl WriteView for ReactiveScope {
         let signals = self.signals.iter();
 
         writer.write_expr(quote! {
-            ::topcoat::view::ReactiveScope::new(
+            ::topcoat::runtime::ReactiveScope::new(
                 __cx,
-                (#(::topcoat::view::ReadSignal::new(&#signals),)*),
+                (#(::topcoat::runtime::ReadSignal::new(&#signals),)*),
                 #path,
             ).await?
         });

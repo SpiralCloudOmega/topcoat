@@ -1,1 +1,3 @@
-export { signal } from "@maverick-js/signals";
+import { Runtime } from "./runtime";
+
+new Runtime().start(document.body);

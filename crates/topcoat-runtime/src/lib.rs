@@ -1,6 +1,8 @@
 mod expr;
+mod signal;
 
 pub use expr::*;
+pub use signal::*;
 
 use topcoat_asset::{Asset, asset};
 

@@ -8,8 +8,9 @@ use topcoat::{
     asset::asset,
     context::{Cx, memoize},
     router::{Result, Slot, layout, page},
+    runtime::{Island, ReadSignal},
     tailwind,
-    view::{Island, ReadSignal, component, island, view},
+    view::{component, island, view},
 };
 
 use crate::components::app_and_request_state;
@@ -37,7 +38,6 @@ async fn layout(cx: &Cx, slot: Slot<'_>) -> Result {
                 <title>"hello world"</title>
                 <link rel="stylesheet" href=(tailwind::stylesheet!())>
                 <script type="module" src=(asset!("https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.1/bundles/datastar.js"))></script>
-                <script type="module" src=(asset!("./runtime.js"))></script>
                 <script type="module" src=(topcoat::runtime::SCRIPT)></script>
                 [topcoat::dev::script /]
             </head>
@@ -162,7 +162,7 @@ async fn combobox(
         signal kek = "initial content".to_owned();
 
         <div>
-            <input data-topcoat-bind=(kek.clone())>
+            <input data-topcoat-bind-value=(kek.clone())>
             track content(kek)
         </div>
     }

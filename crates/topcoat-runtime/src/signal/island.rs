@@ -7,7 +7,9 @@ use std::{
 
 use topcoat_core::context::Cx;
 
-use crate::runtime::{EncodedSignals, Signals, View};
+use topcoat_view::runtime::View;
+
+use crate::{EncodedSignals, Signals};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct IslandId(&'static str);

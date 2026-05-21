@@ -30,6 +30,7 @@ discover = [
 	"dep:inventory",
 	"topcoat-macro/discover",
 	"topcoat-router/discover",
+	"topcoat-runtime/discover",
 	"topcoat-view/discover",
 ]
 

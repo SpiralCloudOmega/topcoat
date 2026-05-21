@@ -30,9 +30,9 @@ impl WriteView for SignalDeclaration {
         let expr = &self.expr;
         writer.let_binding(
             &parse_quote! { #ident },
-            &parse_quote! { ::topcoat::view::Signal::new(#expr) },
+            &parse_quote! { ::topcoat::runtime::Signal::new(#expr) },
         );
-        writer.write_expr(quote! { ::topcoat::view::SignalDeclaration::new(&#ident) });
+        writer.write_expr(quote! { ::topcoat::runtime::SignalDeclaration::new(&#ident) });
     }
 }
 

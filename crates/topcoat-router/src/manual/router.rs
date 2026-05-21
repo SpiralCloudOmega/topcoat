@@ -5,15 +5,12 @@ use axum::{
     response::{Html, IntoResponse},
     routing::{MethodFilter, get, on},
 };
-use http::Uri;
 use serde::Deserialize;
 use topcoat_asset::{AssetBundle, AssetFragmentResolver, ServeAssetBundle};
 use topcoat_core::context::{MaybeAborted, State, WatchAbort};
-use topcoat_view::runtime::{DynIsland, EncodedSignals, Islands};
+use topcoat_runtime::{DynIsland, EncodedSignals, Islands};
 
-use crate::{
-    CxBody, Error, Layout, Layouts, Page, Pages, Route, Routes, not_found, raw_path_params,
-};
+use crate::{CxBody, Error, Layout, Layouts, Page, Pages, Route, Routes, not_found};
 
 /// The core routing primitive that collects [`Page`]s, [`Layout`]s, and
 /// [`Route`]s, matches layouts to pages by path prefix, and converts into an
@@ -127,7 +124,7 @@ impl Router {
     /// collected at link time across the crate and its dependencies.
     #[cfg(feature = "discover")]
     pub fn discover(mut self) -> Self {
-        use topcoat_view::runtime::DynIsland;
+        use topcoat_runtime::DynIsland;
 
         for page in inventory::iter::<Page>().cloned() {
             self = self.page(page);
