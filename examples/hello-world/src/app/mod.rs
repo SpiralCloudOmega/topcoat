@@ -2,13 +2,11 @@ mod _group;
 mod api;
 mod posts;
 
-use std::time::Duration;
 
-use axum::response::Html;
 use topcoat::{
     asset::asset,
     context::{Cx, memoize},
-    router::{IntoResponse, Response, Result, Slot, layout, page, query_params, route},
+    router::{Result, Slot, layout},
     tailwind,
     view::view,
 };
