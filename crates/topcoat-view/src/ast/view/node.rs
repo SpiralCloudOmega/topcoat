@@ -7,7 +7,7 @@ use syn::{
 use crate::ast::{
     ParseOption,
     view::{
-        Component, DocumentType, Element, TemplateBlock, TemplateBreak, TemplateContinue,
+        Component, DocumentType, Element, Nodes, TemplateBlock, TemplateBreak, TemplateContinue,
         TemplateExpr, TemplateForLoop, TemplateIf, TemplateLet, TemplateMatch, ViewWriter,
         WriteView,
     },
@@ -21,13 +21,13 @@ pub enum Node {
     Element(Box<Element>),
     Component(Component),
     Expr(TemplateExpr),
-    If(TemplateIf<Node>),
+    If(TemplateIf<Nodes>),
     Let(TemplateLet),
-    ForLoop(TemplateForLoop<Node>),
+    ForLoop(TemplateForLoop<Nodes>),
     Continue(TemplateContinue),
     Break(TemplateBreak),
     Match(TemplateMatch<Node>),
-    Block(TemplateBlock<Node>),
+    Block(TemplateBlock<Nodes>),
 }
 
 impl Node {
@@ -69,11 +69,11 @@ impl Parse for Node {
             Self::Element(input.parse()?)
         } else if TemplateExpr::peek(input) {
             Self::Expr(input.parse()?)
-        } else if TemplateIf::<Node>::peek(input) {
+        } else if TemplateIf::<Nodes>::peek(input) {
             Self::If(input.parse()?)
         } else if TemplateLet::peek(input) {
             Self::Let(input.parse()?)
-        } else if TemplateForLoop::<Node>::peek(input) {
+        } else if TemplateForLoop::<Nodes>::peek(input) {
             Self::ForLoop(input.parse()?)
         } else if TemplateContinue::peek(input) {
             Self::Continue(input.parse()?)
@@ -81,7 +81,7 @@ impl Parse for Node {
             Self::Break(input.parse()?)
         } else if TemplateMatch::<Node>::peek(input) {
             Self::Match(input.parse()?)
-        } else if TemplateBlock::<Node>::peek(input) {
+        } else if TemplateBlock::<Nodes>::peek(input) {
             Self::Block(input.parse()?)
         } else if Component::peek(input) {
             Self::Component(input.parse()?)

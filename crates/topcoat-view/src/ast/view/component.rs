@@ -7,7 +7,7 @@ use syn::{
 
 use crate::ast::{
     ParseOption,
-    view::{Node, ViewWriter, WriteView},
+    view::{Nodes, ViewWriter, WriteView},
 };
 
 /// A user-defined component invocation, written as
@@ -20,7 +20,7 @@ pub struct Component {
     pub path: Path,
     pub paren_token: Paren,
     pub named_args: Vec<NamedArg>,
-    pub children: Vec<Node>,
+    pub children: Nodes,
 }
 
 /// A `name: value` entry in a component's argument list.
@@ -86,13 +86,7 @@ impl Parse for Component {
 
                 named_args
             },
-            children: {
-                let mut children = Vec::new();
-                while !content.is_empty() {
-                    children.push(content.parse()?);
-                }
-                children
-            },
+            children: content.parse()?,
         })
     }
 }
@@ -110,10 +104,12 @@ impl topcoat_pretty::PrettyPrint for Component {
         printer.scan_begin(topcoat_pretty::BreakMode::Consistent);
         self.path.pretty_print(printer);
         "(".pretty_print(printer);
-        let has_args = !self.named_args.is_empty() || !self.children.is_empty();
-        if has_args {
+        let total = self.named_args.len() + self.children.len();
+        if total > 0 {
             printer.scan_indent(1);
             printer.scan_break();
+            printer.scan_trivia(false, true);
+
             for (index, arg) in self.named_args.iter().enumerate() {
                 arg.ident.pretty_print(printer);
                 ": ".pretty_print(printer);
@@ -121,13 +117,19 @@ impl topcoat_pretty::PrettyPrint for Component {
                 let last_named = index == self.named_args.len() - 1;
                 if !last_named || !self.children.is_empty() {
                     ",".pretty_print(printer);
+                    printer.scan_same_line_trivia();
                     printer.scan_break();
                     " ".pretty_print(printer);
+                    printer.scan_trivia(true, true);
                 }
             }
-            for child in &self.children {
-                child.pretty_print(printer);
+            self.children.pretty_print(printer);
+
+            if total > 1 {
+                printer.scan_force_break();
             }
+            printer.scan_same_line_trivia();
+            printer.scan_trivia(true, false);
             printer.scan_indent(-1);
             printer.scan_break();
         }
@@ -212,9 +214,6 @@ mod tests {
 
     #[test]
     fn named_arg_after_child_is_rejected() {
-        assert!(
-            parse_err(r#"button(<div></div> prop1: 5)"#)
-                .contains("named arguments must come before child nodes"),
-        );
+        assert!(parse_err(r#"button(<div></div> prop1: 5)"#).contains("expected view node"),);
     }
 }
