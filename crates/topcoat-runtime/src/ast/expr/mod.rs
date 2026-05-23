@@ -25,9 +25,9 @@ use syn::{
 /// the user wrote on the closure (e.g. `|e: Event|`); `None` means the user
 /// left the parameter un-annotated.
 #[derive(Clone)]
-struct BoundParam {
-    name: Ident,
-    ty: Option<Type>,
+pub struct BoundParam {
+    pub name: Ident,
+    pub ty: Option<Type>,
 }
 
 /// The top-level `expr! { ... }` AST. A whitelist of `syn::Expr` shapes is
@@ -53,8 +53,8 @@ impl Expr {
                         "expected a bare identifier",
                     ));
                 };
-                if let Some(param) = bound.iter().find(|b| &b.name == ident) {
-                    Ok(Self::Param(ExprParam::new(ident.clone(), param.ty.clone())))
+                if bound.iter().any(|b| &b.name == ident) {
+                    Ok(Self::Param(ExprParam::new(ident.clone())))
                 } else {
                     Ok(Self::Ident(ExprIdent::new(ident.clone())))
                 }
@@ -140,12 +140,10 @@ impl Expr {
                         )),
                     })
                     .collect::<syn::Result<_>>()?;
-                let param_names: Vec<Ident> =
-                    params.iter().map(|p| p.name.clone()).collect();
                 let mut inner_bound = bound.to_vec();
-                inner_bound.extend(params);
+                inner_bound.extend(params.clone());
                 let body = Self::from_syn(*closure.body, &inner_bound)?;
-                Ok(Self::Closure(ExprClosure::new(param_names, body)))
+                Ok(Self::Closure(ExprClosure::new(params, body)))
             }
             other => Err(syn::Error::new_spanned(other, "unsupported expression")),
         }

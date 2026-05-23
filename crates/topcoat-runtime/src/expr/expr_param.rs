@@ -18,7 +18,22 @@ impl<T> ExprParam<T> {
             _phantom: PhantomData,
         }
     }
+
+    pub fn name(&self) -> &'static str {
+        self.name
+    }
 }
+
+impl<T> Clone for ExprParam<T> {
+    fn clone(&self) -> Self {
+        Self {
+            name: self.name,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<T> Copy for ExprParam<T> {}
 
 impl<T> Expr for ExprParam<T> {
     type Output = T;

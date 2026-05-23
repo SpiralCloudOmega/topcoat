@@ -158,7 +158,7 @@ async fn combobox(content: Island<(ReadSignal<String>,), topcoat::router::Error>
     view! {
         signal kek = "initial content".to_owned();
         <div>
-            <input :value=(*kek) @input=(|e: ::topcoat::runtime::Event| *kek = e.target.value)>
+            <input :value=(*kek) @input=(|e| *kek = e.target.value)>
             track content(kek)
         </div>
     }

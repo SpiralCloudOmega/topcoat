@@ -1,25 +1,101 @@
 use std::marker::PhantomData;
 
-use crate::{Expr, Interpreter};
+use crate::{Expr, ExprParam, Interpreter};
 
-pub struct ExprClosure<Params, Body> {
-    params: &'static [&'static str],
+/// Per-arity storage for a closure's parameters. Each `ExprParam<T>` is just a
+/// `&'static str` plus a zero-sized phantom, so the tuple is `Copy` and lives
+/// inline in [`ExprClosure`] — no allocation.
+pub trait ClosureParams {
+    type Storage: Copy;
+    fn write_param_list(storage: &Self::Storage, out: &mut String);
+}
+
+macro_rules! impl_closure_params {
+    ($( ($($idx:tt: $name:ident),*) ),* $(,)?) => {
+        $(
+            impl<$($name),*> ClosureParams for ($($name,)*) {
+                type Storage = ($(ExprParam<$name>,)*);
+
+                #[allow(unused_variables, unused_assignments)]
+                fn write_param_list(storage: &Self::Storage, out: &mut String) {
+                    #[allow(unused_mut)]
+                    let mut first = true;
+                    $(
+                        if !first { out.push_str(", "); }
+                        out.push_str(storage.$idx.name());
+                        first = false;
+                    )*
+                }
+            }
+        )*
+    };
+}
+
+impl_closure_params! {
+    (),
+    (0: T1),
+    (0: T1, 1: T2),
+    (0: T1, 1: T2, 2: T3),
+    (0: T1, 1: T2, 2: T3, 3: T4),
+    (0: T1, 1: T2, 2: T3, 3: T4, 4: T5),
+    (0: T1, 1: T2, 2: T3, 3: T4, 4: T5, 5: T6),
+    (0: T1, 1: T2, 2: T3, 3: T4, 4: T5, 5: T6, 6: T7),
+    (0: T1, 1: T2, 2: T3, 3: T4, 4: T5, 5: T6, 6: T7, 7: T8),
+}
+
+pub struct ExprClosure<Params, Body>
+where
+    Params: ClosureParams,
+{
+    storage: Params::Storage,
     body: Body,
     _phantom: PhantomData<fn(Params) -> ()>,
 }
 
-impl<Params, Body> ExprClosure<Params, Body> {
-    pub fn new(params: &'static [&'static str], body: Body) -> Self {
+macro_rules! impl_new {
+    ($( ($($idx:tt: $name:ident),*) ),* $(,)?) => {
+        $(
+            impl<$($name,)* Body> ExprClosure<($($name,)*), Body> {
+                #[allow(clippy::too_many_arguments)]
+                pub fn new(
+                    params: ($(&ExprParam<$name>,)*),
+                    body: Body,
+                ) -> Self {
+                    Self {
+                        storage: ($(*params.$idx,)*),
+                        body,
+                        _phantom: PhantomData,
+                    }
+                }
+            }
+        )*
+    };
+}
+
+impl<Body> ExprClosure<(), Body> {
+    pub fn new(_params: (), body: Body) -> Self {
         Self {
-            params,
+            storage: (),
             body,
             _phantom: PhantomData,
         }
     }
 }
 
+impl_new! {
+    (0: T1),
+    (0: T1, 1: T2),
+    (0: T1, 1: T2, 2: T3),
+    (0: T1, 1: T2, 2: T3, 3: T4),
+    (0: T1, 1: T2, 2: T3, 3: T4, 4: T5),
+    (0: T1, 1: T2, 2: T3, 3: T4, 4: T5, 5: T6),
+    (0: T1, 1: T2, 2: T3, 3: T4, 4: T5, 5: T6, 6: T7),
+    (0: T1, 1: T2, 2: T3, 3: T4, 4: T5, 5: T6, 6: T7, 7: T8),
+}
+
 impl<Params, Body> Expr for ExprClosure<Params, Body>
 where
+    Params: ClosureParams,
     Body: Expr,
 {
     type Output = Body::Output;
@@ -30,12 +106,7 @@ where
 
     fn to_js(&self, out: &mut String) {
         out.push_str("((");
-        for (i, name) in self.params.iter().enumerate() {
-            if i > 0 {
-                out.push_str(", ");
-            }
-            out.push_str(name);
-        }
+        Params::write_param_list(&self.storage, out);
         out.push_str(") => { ");
         self.body.to_js(out);
         out.push_str("; })");
