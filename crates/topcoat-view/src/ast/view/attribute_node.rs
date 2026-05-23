@@ -163,6 +163,6 @@ mod tests {
 
     #[test]
     fn unrecognized_token_is_rejected() {
-        assert!(parse_err("@").contains("expected attribute node"));
+        assert!(parse_err("#").contains("expected attribute node"));
     }
 }
