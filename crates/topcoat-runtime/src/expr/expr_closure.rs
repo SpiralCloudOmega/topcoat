@@ -1,5 +1,3 @@
-use serde::{Serialize, Serializer, ser::SerializeStruct};
-
 use crate::{Expr, Interpreter};
 
 /// A handler closure `|p1, p2, ...| body`. The body is required to have unit
@@ -25,17 +23,17 @@ where
     fn eval(self, _interpreter: &mut Interpreter) -> Self::Output {
         unreachable!("ExprClosure::eval called server-side; handlers do not run during SSR")
     }
-}
 
-impl<Body> Serialize for ExprClosure<Body>
-where
-    Body: Serialize,
-{
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut s = serializer.serialize_struct("ExprClosure", 3)?;
-        s.serialize_field("type", "Closure")?;
-        s.serialize_field("params", &self.params)?;
-        s.serialize_field("body", &self.body)?;
-        s.end()
+    fn to_js(&self, out: &mut String) {
+        out.push_str("((");
+        for (i, name) in self.params.iter().enumerate() {
+            if i > 0 {
+                out.push_str(", ");
+            }
+            out.push_str(name);
+        }
+        out.push_str(") => { ");
+        self.body.to_js(out);
+        out.push_str("; })");
     }
 }

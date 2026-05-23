@@ -2,10 +2,9 @@ use topcoat_view::runtime::{IntoViewParts, Unescaped, ViewPart};
 
 use crate::Expr;
 
-/// An event handler attribute. Serializes the handler expression (always an
-/// [`ExprClosure`](crate::ExprClosure)) into a `data-topcoat-on:<event>`
-/// attribute on the element. The browser's scanner attaches a real
-/// `addEventListener` that interprets the serialized body.
+/// An event handler attribute. Emits a JavaScript closure expression into a
+/// `data-topcoat-on:<event>` attribute on the element. The browser scanner
+/// wraps it in `new Function('__context', …)` to obtain a real handler.
 #[derive(Debug, Clone)]
 pub struct EventHandler<K, V> {
     key: K,
@@ -25,14 +24,14 @@ where
     V: Expr<Output = ()>,
 {
     fn into_view_parts(self) -> impl Iterator<Item = ViewPart> {
-        let serialized =
-            serde_json::to_string(&self.value).expect("all expressions are serializable");
+        let mut js = String::new();
+        self.value.to_js(&mut js);
 
         Unescaped::new_unchecked(" data-topcoat-on:")
             .into_view_parts()
             .chain(self.key.into_view_parts())
             .chain(Unescaped::new_unchecked("=\"").into_view_parts())
-            .chain(serialized.into_view_parts())
+            .chain(js.into_view_parts())
             .chain(Unescaped::new_unchecked("\" ").into_view_parts())
     }
 }

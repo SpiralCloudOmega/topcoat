@@ -1,6 +1,6 @@
 import { effect } from "@maverick-js/signals";
 
-import { type Expr, eval_expr } from "./expr";
+import type { Context } from "./context";
 import type { Scope } from "./scope";
 
 export const BIND_PREFIX = "data-topcoat-bind:";
@@ -17,16 +17,18 @@ const PROPERTY_NAMES = new Set([
 	"indeterminate",
 ]);
 
+type Compute = (ctx: Context) => unknown;
+
 export function setupBinding(el: Element, attr: Attr, scope: Scope): void {
 	if (!attr.name.startsWith(BIND_PREFIX)) return;
 
 	const name = attr.name.substring(BIND_PREFIX.length);
-	const expr = JSON.parse(attr.value) as Expr;
+	const compute = new Function("__context", `return ${attr.value};`) as Compute;
 
-	const { interpreter } = scope.runtime;
+	const { context } = scope.runtime;
 	scope.run(() => {
 		effect(() => {
-			write(el, name, eval_expr(expr, interpreter));
+			write(el, name, compute(context));
 		});
 	});
 }

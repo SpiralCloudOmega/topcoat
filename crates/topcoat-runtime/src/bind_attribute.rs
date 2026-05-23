@@ -22,8 +22,8 @@ where
     T: Into<String>,
 {
     fn into_view_parts(self) -> impl Iterator<Item = ViewPart> {
-        let serialized_expr =
-            serde_json::to_string(&self.value).expect("all expressions are serializable");
+        let mut js = String::new();
+        self.value.to_js(&mut js);
 
         let mut interpreter = Interpreter::new();
         let value = self.value.eval(&mut interpreter).into();
@@ -36,7 +36,7 @@ where
             .chain(Unescaped::new_unchecked("\" data-topcoat-bind:").into_view_parts())
             .chain(self.key.into_view_parts())
             .chain(Unescaped::new_unchecked("=\"").into_view_parts())
-            .chain(serialized_expr.into_view_parts())
+            .chain(js.into_view_parts())
             .chain(Unescaped::new_unchecked("\" ").into_view_parts())
     }
 }

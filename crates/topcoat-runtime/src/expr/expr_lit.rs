@@ -1,4 +1,4 @@
-use serde::{Serialize, Serializer, ser::SerializeStruct};
+use serde::Serialize;
 
 use crate::{Expr, Interpreter, IntoExpr};
 
@@ -13,14 +13,10 @@ where
     fn eval(self, _interpreter: &mut Interpreter) -> Self::Output {
         self.0
     }
-}
 
-impl<T: Serialize> Serialize for ExprLit<T> {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut s = serializer.serialize_struct("ExprLit", 2)?;
-        s.serialize_field("type", "Lit")?;
-        s.serialize_field("value", &self.0)?;
-        s.end()
+    fn to_js(&self, out: &mut String) {
+        let json = serde_json::to_string(&self.0).expect("literal is serializable as JSON");
+        out.push_str(&json);
     }
 }
 

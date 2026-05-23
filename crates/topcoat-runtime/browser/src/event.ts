@@ -1,25 +1,16 @@
-import { type Expr, eval_expr } from "./expr";
+import type { Context } from "./context";
 import type { Scope } from "./scope";
 
 const EVENT_HANDLER_PREFIX = "data-topcoat-on:";
+
+type Compile = (ctx: Context) => EventListener;
 
 export function setupEventHandler(el: Element, attr: Attr, scope: Scope): void {
 	if (!attr.name.startsWith(EVENT_HANDLER_PREFIX)) return;
 
 	const name = attr.name.substring(EVENT_HANDLER_PREFIX.length);
-	const expr = JSON.parse(attr.value) as Expr;
+	const compile = new Function("__context", `return ${attr.value};`) as Compile;
 
-	const { interpreter } = scope.runtime;
-	scope.run(() => {
-		el.addEventListener(name, (...params) => {
-			eval_expr(
-				{
-					type: "Call",
-					receiver: expr,
-					params: params.map((param) => ({ type: "Lit", value: param })),
-				},
-				interpreter,
-			);
-		});
-	});
+	const handler = compile(scope.runtime.context);
+	el.addEventListener(name, handler);
 }

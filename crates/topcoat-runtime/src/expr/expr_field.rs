@@ -1,7 +1,5 @@
 use std::marker::PhantomData;
 
-use serde::{Serialize, Serializer, ser::SerializeStruct};
-
 use crate::{Expr, Interpreter};
 
 /// A `receiver.field` access on a handler-internal value. The accessor closure
@@ -38,17 +36,11 @@ where
     fn eval(self, _interpreter: &mut Interpreter) -> Self::Output {
         unreachable!("ExprField::eval called server-side; handler bodies do not run during SSR")
     }
-}
 
-impl<R, T> Serialize for ExprField<R, T>
-where
-    R: Serialize,
-{
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut s = serializer.serialize_struct("ExprField", 3)?;
-        s.serialize_field("type", "Field")?;
-        s.serialize_field("receiver", &self.receiver)?;
-        s.serialize_field("name", self.name)?;
-        s.end()
+    fn to_js(&self, out: &mut String) {
+        out.push('(');
+        self.receiver.to_js(out);
+        out.push_str(").");
+        out.push_str(self.name);
     }
 }

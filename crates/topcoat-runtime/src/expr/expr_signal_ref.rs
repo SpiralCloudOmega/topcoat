@@ -1,4 +1,4 @@
-use serde::{Serialize, Serializer, ser::SerializeStruct};
+use std::fmt::Write;
 
 use crate::{Expr, ExprDerefAssignTarget, ExprDerefTarget, Interpreter, IntoExpr, Signal};
 
@@ -12,14 +12,11 @@ impl<'a, T> Expr for ExprSignalRef<'a, T> {
     fn eval(self, _interpreter: &mut Interpreter) -> Self::Output {
         self.signal
     }
-}
 
-impl<T> Serialize for ExprSignalRef<'_, T> {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut s = serializer.serialize_struct("ExprSignalRef", 2)?;
-        s.serialize_field("type", "SignalRef")?;
-        s.serialize_field("id", &self.signal.id())?;
-        s.end()
+    fn to_js(&self, out: &mut String) {
+        let id =
+            serde_json::to_string(&self.signal.id()).expect("signal id is serializable as JSON");
+        write!(out, "__context.signal({id})").unwrap();
     }
 }
 

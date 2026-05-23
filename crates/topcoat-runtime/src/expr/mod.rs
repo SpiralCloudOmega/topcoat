@@ -18,12 +18,14 @@ pub use expr_param::*;
 pub use expr_signal_ref::*;
 pub use interpreter::*;
 
-use serde::Serialize;
-
-pub trait Expr: Serialize {
+/// A reactive expression. `eval` runs server-side for SSR-time evaluation
+/// (only meaningful for read-position nodes); `to_js` emits a JavaScript
+/// fragment that the browser compiles via `new Function('__context', …)`.
+pub trait Expr {
     type Output;
 
     fn eval(self, interp: &mut Interpreter) -> Self::Output;
+    fn to_js(&self, out: &mut String);
 }
 
 pub trait IntoExpr {

@@ -1,7 +1,5 @@
 use std::marker::PhantomData;
 
-use serde::{Serialize, Serializer, ser::SerializeStruct};
-
 use crate::{Expr, Interpreter};
 
 /// A `receiver.method()` call. Only zero-argument methods are supported. The
@@ -43,17 +41,12 @@ where
         let receiver = self.receiver.eval(interpreter);
         (self.accessor)(receiver)
     }
-}
 
-impl<R, F, T> Serialize for ExprMethodCall<R, F, T>
-where
-    R: Serialize,
-{
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut s = serializer.serialize_struct("ExprMethodCall", 3)?;
-        s.serialize_field("type", "MethodCall")?;
-        s.serialize_field("receiver", &self.receiver)?;
-        s.serialize_field("method", self.method)?;
-        s.end()
+    fn to_js(&self, out: &mut String) {
+        out.push('(');
+        self.receiver.to_js(out);
+        out.push_str(").");
+        out.push_str(self.method);
+        out.push_str("()");
     }
 }

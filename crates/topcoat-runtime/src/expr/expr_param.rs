@@ -1,7 +1,5 @@
 use std::marker::PhantomData;
 
-use serde::{Serialize, Serializer, ser::SerializeStruct};
-
 use crate::{Expr, Interpreter};
 
 /// References a closure parameter by name. The user-annotated parameter type
@@ -28,13 +26,8 @@ impl<T> Expr for ExprParam<T> {
     fn eval(self, _interpreter: &mut Interpreter) -> Self::Output {
         unreachable!("ExprParam::eval called server-side; handler bodies do not run during SSR")
     }
-}
 
-impl<T> Serialize for ExprParam<T> {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut s = serializer.serialize_struct("ExprParam", 2)?;
-        s.serialize_field("type", "Param")?;
-        s.serialize_field("name", self.name)?;
-        s.end()
+    fn to_js(&self, out: &mut String) {
+        out.push_str(self.name);
     }
 }

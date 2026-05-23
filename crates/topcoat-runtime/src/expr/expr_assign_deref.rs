@@ -1,10 +1,8 @@
-use serde::{Serialize, Serializer, ser::SerializeStruct};
-
 use crate::{Expr, Interpreter};
 
-/// Counterpart to [`ExprDerefTarget`] for write positions. Server-side
-/// `expr_deref_assign` is unreachable — assignment only happens in the browser
-/// from inside an event handler.
+/// Counterpart to [`ExprDerefTarget`](super::ExprDerefTarget) for write
+/// positions. Server-side `expr_deref_assign` is unreachable — assignment only
+/// happens in the browser from inside an event handler.
 pub trait ExprDerefAssignTarget {
     type Value;
 
@@ -42,18 +40,13 @@ where
             "ExprAssignDeref::eval called server-side; handler bodies do not run during SSR"
         )
     }
-}
 
-impl<P, V> Serialize for ExprAssignDeref<P, V>
-where
-    P: Serialize,
-    V: Serialize,
-{
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut s = serializer.serialize_struct("ExprAssignDeref", 3)?;
-        s.serialize_field("type", "AssignDeref")?;
-        s.serialize_field("place", &self.place)?;
-        s.serialize_field("value", &self.value)?;
-        s.end()
+    fn to_js(&self, out: &mut String) {
+        // In JS, maverick signal handles have `.set(value)` for writes.
+        out.push('(');
+        self.place.to_js(out);
+        out.push_str(").set(");
+        self.value.to_js(out);
+        out.push(')');
     }
 }

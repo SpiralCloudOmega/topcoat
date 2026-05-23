@@ -1,11 +1,11 @@
-import { Interpreter } from "./expr";
+import { Context } from "./context";
 import { scan } from "./scan";
 import { Scope } from "./scope";
 import { SignalRegistry } from "./signal";
 
 export class Runtime {
 	readonly registry = new SignalRegistry();
-	readonly interpreter = new Interpreter(this.registry);
+	readonly context: Context = new Context(this.registry);
 	readonly rootScope: Scope = new Scope(null, this);
 
 	start(root: ParentNode): void {

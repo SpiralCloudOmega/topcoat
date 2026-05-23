@@ -1,5 +1,3 @@
-use serde::{Serialize, Serializer, ser::SerializeStruct};
-
 use crate::{Expr, Interpreter};
 
 pub trait ExprDerefTarget {
@@ -26,13 +24,11 @@ where
     fn eval(self, interpreter: &mut Interpreter) -> Self::Output {
         self.0.eval(interpreter).expr_deref()
     }
-}
 
-impl<E: Serialize> Serialize for ExprDeref<E> {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut s = serializer.serialize_struct("ExprDeref", 2)?;
-        s.serialize_field("type", "Deref")?;
-        s.serialize_field("inner", &self.0)?;
-        s.end()
+    fn to_js(&self, out: &mut String) {
+        // In JS, maverick signal handles are callable; reading is `handle()`.
+        out.push('(');
+        self.0.to_js(out);
+        out.push_str(")()");
     }
 }
