@@ -1,32 +1,29 @@
 use proc_macro2::TokenStream;
-use quote::{ToTokens, quote};
+use quote::quote;
+use syn::UnOp;
 
 use super::Expr;
 
-/// A `*place = value` assignment. The macro lowers this from
-/// `syn::Expr::Assign` whose LHS is a deref; `place` is the inner expression
-/// (a signal-like producing a deref target), not the deref itself.
-pub struct ExprAssignDeref {
-    place: Box<Expr>,
-    value: Box<Expr>,
-}
-
-impl ExprAssignDeref {
-    pub fn new(place: Expr, value: Expr) -> Self {
-        Self {
-            place: Box::new(place),
-            value: Box::new(value),
-        }
-    }
-}
-
-impl ToTokens for ExprAssignDeref {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let place = &self.place;
-        let value = &self.value;
-        quote! {
-            ::topcoat::runtime::ExprAssignDeref::new(#place, #value)
-        }
-        .to_tokens(tokens);
+impl Expr {
+    pub(super) fn expr_assign_deref_to_tokens(
+        assign: &syn::ExprAssign,
+    ) -> syn::Result<TokenStream> {
+        let syn::Expr::Unary(unary) = &*assign.left else {
+            return Err(syn::Error::new_spanned(
+                &assign.left,
+                "only `*place = value` assignments are supported",
+            ));
+        };
+        let UnOp::Deref(_) = unary.op else {
+            return Err(syn::Error::new_spanned(
+                unary.op,
+                "only `*place = value` assignments are supported",
+            ));
+        };
+        let place = Self::dispatch(&unary.expr)?;
+        let value = Self::dispatch(&assign.right)?;
+        Ok(quote! {
+            ::topcoat::interop::ExprAssignDeref::new(#place, #value)
+        })
     }
 }

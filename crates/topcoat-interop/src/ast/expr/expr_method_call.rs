@@ -1,39 +1,33 @@
 use proc_macro2::TokenStream;
-use quote::{ToTokens, quote};
-use syn::Ident;
+use quote::quote;
 
 use super::Expr;
 
-/// A `receiver.method()` call. Only zero-argument methods are supported for
-/// now. Emits an accessor closure alongside the method name so rustc resolves
-/// the return type from the receiver's real type, and the server-side `eval`
-/// can run the method.
-pub struct ExprMethodCall {
-    receiver: Box<Expr>,
-    method: Ident,
-}
-
-impl ExprMethodCall {
-    pub fn new(receiver: Expr, method: Ident) -> Self {
-        Self {
-            receiver: Box::new(receiver),
-            method,
+impl Expr {
+    pub(super) fn expr_method_call_to_tokens(
+        mc: &syn::ExprMethodCall,
+    ) -> syn::Result<TokenStream> {
+        if mc.turbofish.is_some() {
+            return Err(syn::Error::new_spanned(
+                &mc.turbofish,
+                "turbofish on method calls is not supported",
+            ));
         }
-    }
-}
-
-impl ToTokens for ExprMethodCall {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let receiver = &self.receiver;
-        let method_str = self.method.to_string();
-        let method_ident = &self.method;
-        quote! {
-            ::topcoat::runtime::ExprMethodCall::new(
+        if !mc.args.is_empty() {
+            return Err(syn::Error::new_spanned(
+                &mc.args,
+                "method arguments are not supported",
+            ));
+        }
+        let receiver = Self::dispatch(&mc.receiver)?;
+        let method = &mc.method;
+        let method_str = method.to_string();
+        Ok(quote! {
+            ::topcoat::interop::ExprMethodCall::new(
                 #receiver,
                 #method_str,
-                |__receiver| __receiver.#method_ident(),
+                |__receiver| __receiver.#method(),
             )
-        }
-        .to_tokens(tokens);
+        })
     }
 }

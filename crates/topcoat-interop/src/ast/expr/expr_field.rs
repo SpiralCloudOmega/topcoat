@@ -1,37 +1,25 @@
 use proc_macro2::TokenStream;
-use quote::{ToTokens, quote};
-use syn::Ident;
+use quote::quote;
+use syn::Member;
 
 use super::Expr;
 
-/// A `receiver.field` access. Emits an accessor closure alongside the name so
-/// rustc resolves the field's type against the receiver's real type.
-pub struct ExprField {
-    receiver: Box<Expr>,
-    name: Ident,
-}
-
-impl ExprField {
-    pub fn new(receiver: Expr, name: Ident) -> Self {
-        Self {
-            receiver: Box::new(receiver),
-            name,
-        }
-    }
-}
-
-impl ToTokens for ExprField {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let receiver = &self.receiver;
-        let name_str = self.name.to_string();
-        let name_ident = &self.name;
-        quote! {
-            ::topcoat::runtime::ExprField::new(
+impl Expr {
+    pub(super) fn expr_field_to_tokens(field: &syn::ExprField) -> syn::Result<TokenStream> {
+        let receiver = Self::dispatch(&field.base)?;
+        let Member::Named(name) = &field.member else {
+            return Err(syn::Error::new(
+                proc_macro2::Span::call_site(),
+                "tuple field access is not supported",
+            ));
+        };
+        let name_str = name.to_string();
+        Ok(quote! {
+            ::topcoat::interop::ExprField::new(
                 #receiver,
                 #name_str,
-                |__receiver| __receiver.#name_ident,
+                |__receiver| __receiver.#name,
             )
-        }
-        .to_tokens(tokens);
+        })
     }
 }

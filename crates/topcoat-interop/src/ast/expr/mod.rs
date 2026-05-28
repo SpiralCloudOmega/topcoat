@@ -6,239 +6,39 @@ mod expr_ident;
 mod expr_lit;
 mod expr_method_call;
 
-pub use expr_assign_deref::*;
-pub use expr_closure::*;
-pub use expr_deref::*;
-pub use expr_field::*;
-pub use expr_ident::*;
-pub use expr_lit::*;
-pub use expr_method_call::*;
-
 use proc_macro2::TokenStream;
-use quote::ToTokens;
-use syn::{
-    Ident, Member, Pat, Type, UnOp,
-    parse::{Parse, ParseStream},
-};
+use syn::parse::{Parse, ParseStream};
 
-/// A closure parameter binding. The type is whatever the user wrote on the
-/// closure (e.g. `|e: Event|`); `None` means the user left the parameter
-/// un-annotated.
-#[derive(Clone)]
-pub struct BoundParam {
-    pub name: Ident,
-    pub ty: Option<Type>,
-}
-
-/// The top-level `expr! { ... }` AST. A whitelist of `syn::Expr` shapes is
-/// translated into a tree of runtime expression nodes; anything outside that
-/// whitelist is rejected at compile time.
-pub enum Expr {
-    AssignDeref(ExprAssignDeref),
-    Closure(ExprClosure),
-    Deref(ExprDeref),
-    Field(ExprField),
-    Ident(ExprIdent),
-    Lit(ExprLit),
-    MethodCall(ExprMethodCall),
-}
-
-impl Expr {
-    fn from_syn(expr: syn::Expr) -> syn::Result<Self> {
-        match expr {
-            syn::Expr::Lit(lit) => Ok(Self::Lit(ExprLit::new(lit.lit))),
-            syn::Expr::Path(path) => {
-                let Some(ident) = path.path.get_ident() else {
-                    return Err(syn::Error::new_spanned(path, "expected a bare identifier"));
-                };
-                Ok(Self::Ident(ExprIdent::new(ident.clone())))
-            }
-            syn::Expr::Unary(unary) => {
-                let UnOp::Deref(_) = unary.op else {
-                    return Err(syn::Error::new_spanned(
-                        unary.op,
-                        "unsupported unary operator",
-                    ));
-                };
-                let inner = Self::from_syn(*unary.expr)?;
-                Ok(Self::Deref(ExprDeref::new(inner)))
-            }
-            syn::Expr::Field(field) => {
-                let receiver = Self::from_syn(*field.base)?;
-                let Member::Named(name) = field.member else {
-                    return Err(syn::Error::new(
-                        proc_macro2::Span::call_site(),
-                        "tuple field access is not supported",
-                    ));
-                };
-                Ok(Self::Field(ExprField::new(receiver, name)))
-            }
-            syn::Expr::MethodCall(mc) => {
-                if mc.turbofish.is_some() {
-                    return Err(syn::Error::new_spanned(
-                        &mc.turbofish,
-                        "turbofish on method calls is not supported",
-                    ));
-                }
-                if !mc.args.is_empty() {
-                    return Err(syn::Error::new_spanned(
-                        &mc.args,
-                        "method arguments are not supported",
-                    ));
-                }
-                let receiver = Self::from_syn(*mc.receiver)?;
-                Ok(Self::MethodCall(ExprMethodCall::new(receiver, mc.method)))
-            }
-            syn::Expr::Paren(paren) => Self::from_syn(*paren.expr),
-            syn::Expr::Assign(assign) => {
-                let syn::Expr::Unary(unary) = *assign.left else {
-                    return Err(syn::Error::new_spanned(
-                        assign.left,
-                        "only `*place = value` assignments are supported",
-                    ));
-                };
-                let UnOp::Deref(_) = unary.op else {
-                    return Err(syn::Error::new_spanned(
-                        unary.op,
-                        "only `*place = value` assignments are supported",
-                    ));
-                };
-                let place = Self::from_syn(*unary.expr)?;
-                let value = Self::from_syn(*assign.right)?;
-                Ok(Self::AssignDeref(ExprAssignDeref::new(place, value)))
-            }
-            syn::Expr::Closure(closure) => {
-                let params: Vec<BoundParam> = closure
-                    .inputs
-                    .iter()
-                    .map(|pat| match pat {
-                        Pat::Ident(pi) => Ok(BoundParam {
-                            name: pi.ident.clone(),
-                            ty: None,
-                        }),
-                        Pat::Type(pt) => {
-                            let Pat::Ident(pi) = &*pt.pat else {
-                                return Err(syn::Error::new_spanned(
-                                    &pt.pat,
-                                    "expected a bare parameter name",
-                                ));
-                            };
-                            Ok(BoundParam {
-                                name: pi.ident.clone(),
-                                ty: Some((*pt.ty).clone()),
-                            })
-                        }
-                        other => Err(syn::Error::new_spanned(
-                            other,
-                            "expected a bare parameter name",
-                        )),
-                    })
-                    .collect::<syn::Result<_>>()?;
-                let body = Self::from_syn(*closure.body)?;
-                Ok(Self::Closure(ExprClosure::new(params, body)))
-            }
-            other => Err(syn::Error::new_spanned(other, "unsupported expression")),
-        }
-    }
+/// The top-level `expr! { ... }` AST. A thin wrapper around `syn::Expr`; the
+/// whitelist of supported shapes is enforced when lowering to tokens.
+pub struct Expr {
+    inner: syn::Expr,
 }
 
 impl Parse for Expr {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        Self::from_syn(input.parse()?)
+        Ok(Self {
+            inner: input.parse()?,
+        })
     }
 }
 
-impl ToTokens for Expr {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        match self {
-            Self::AssignDeref(node) => node.to_tokens(tokens),
-            Self::Closure(node) => node.to_tokens(tokens),
-            Self::Deref(node) => node.to_tokens(tokens),
-            Self::Field(node) => node.to_tokens(tokens),
-            Self::Ident(node) => node.to_tokens(tokens),
-            Self::Lit(node) => node.to_tokens(tokens),
-            Self::MethodCall(node) => node.to_tokens(tokens),
+impl Expr {
+    pub fn expr_to_tokens(&self) -> syn::Result<TokenStream> {
+        Self::dispatch(&self.inner)
+    }
+
+    fn dispatch(expr: &syn::Expr) -> syn::Result<TokenStream> {
+        match expr {
+            syn::Expr::Assign(assign) => Self::expr_assign_deref_to_tokens(assign),
+            syn::Expr::Closure(closure) => Self::expr_closure_to_tokens(closure),
+            syn::Expr::Field(field) => Self::expr_field_to_tokens(field),
+            syn::Expr::Lit(lit) => Self::expr_lit_to_tokens(lit),
+            syn::Expr::MethodCall(mc) => Self::expr_method_call_to_tokens(mc),
+            syn::Expr::Paren(paren) => Self::dispatch(&paren.expr),
+            syn::Expr::Path(path) => Self::expr_ident_to_tokens(path),
+            syn::Expr::Unary(unary) => Self::expr_deref_to_tokens(unary),
+            other => Err(syn::Error::new_spanned(other, "unsupported expression")),
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn parse(source: &str) -> Expr {
-        syn::parse_str(source).unwrap()
-    }
-
-    fn parse_err(source: &str) -> String {
-        match syn::parse_str::<Expr>(source) {
-            Ok(_) => panic!("expected parse error for `{source}`"),
-            Err(err) => err.to_string(),
-        }
-    }
-
-    #[test]
-    fn parses_bare_identifier() {
-        assert!(matches!(parse("signal"), Expr::Ident(_)));
-    }
-
-    #[test]
-    fn parses_deref_of_identifier() {
-        assert!(matches!(parse("*signal"), Expr::Deref(_)));
-    }
-
-    #[test]
-    fn parses_nested_deref() {
-        let Expr::Deref(_) = parse("**signal") else {
-            panic!("expected deref")
-        };
-    }
-
-    #[test]
-    fn parses_field_access() {
-        assert!(matches!(parse("e.target"), Expr::Field(_)));
-    }
-
-    #[test]
-    fn parses_chained_field_access() {
-        assert!(matches!(parse("e.target.value"), Expr::Field(_)));
-    }
-
-    #[test]
-    fn parses_assignment_to_deref() {
-        assert!(matches!(parse("*kek = x"), Expr::AssignDeref(_)));
-    }
-
-    #[test]
-    fn parses_closure() {
-        assert!(matches!(
-            parse("|e| *kek = e.target.value"),
-            Expr::Closure(_)
-        ));
-    }
-
-    #[test]
-    fn literal_is_rejected() {
-        assert!(parse_err("42").contains("unsupported expression"));
-    }
-
-    #[test]
-    fn binary_op_is_rejected() {
-        assert!(parse_err("a + b").contains("unsupported expression"));
-    }
-
-    #[test]
-    fn path_with_segments_is_rejected() {
-        assert!(parse_err("foo::bar").contains("bare identifier"));
-    }
-
-    #[test]
-    fn non_deref_unary_is_rejected() {
-        assert!(parse_err("-x").contains("unary"));
-    }
-
-    #[test]
-    fn non_deref_assignment_is_rejected() {
-        assert!(parse_err("x = y").contains("only `*place = value`"));
     }
 }

@@ -1,20 +1,11 @@
 use proc_macro2::TokenStream;
-use quote::{ToTokens, quote};
-use syn::Lit;
+use quote::quote;
 
-pub struct ExprLit {
-    inner: Lit,
-}
+use super::Expr;
 
-impl ExprLit {
-    pub fn new(inner: Lit) -> Self {
-        Self { inner }
-    }
-}
-
-impl ToTokens for ExprLit {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let inner = &self.inner;
-        quote! { ::topcoat::runtime::IntoExpr::into_expr(#inner) }.to_tokens(tokens);
+impl Expr {
+    pub(super) fn expr_lit_to_tokens(lit: &syn::ExprLit) -> syn::Result<TokenStream> {
+        let inner = &lit.lit;
+        Ok(quote! { ::topcoat::interop::ExprValue::new(#inner) })
     }
 }
