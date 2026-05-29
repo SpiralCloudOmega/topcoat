@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::runtime::{Eval, Expr, ExprParam, FmtJs, Formatter, Interpreter};
+use crate::runtime::{Eval, ExprParam, FmtJs, Formatter};
 
 /// Per-arity storage for a closure's parameters. Each `ExprParam<T>` is just a
 /// `&'static str` plus a zero-sized phantom, so the tuple is `Copy` and lives
@@ -99,10 +99,6 @@ where
     Body: Eval,
 {
     type Output = Body::Output;
-
-    fn eval(self, _interpreter: &mut Interpreter) -> Self::Output {
-        unreachable!("ExprClosure::eval called server-side; handlers do not run during SSR")
-    }
 }
 
 impl<Params, Body> FmtJs for ExprClosure<Params, Body>

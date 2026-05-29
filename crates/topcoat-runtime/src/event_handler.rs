@@ -1,4 +1,4 @@
-use topcoat_interop::runtime::{Expr, ExprClosure, FmtJs, Formatter};
+use topcoat_interop::runtime::Expr;
 use topcoat_view::runtime::{IntoViewParts, Unescaped, ViewPart};
 
 use crate::Event;
@@ -6,33 +6,31 @@ use crate::Event;
 /// An event handler attribute. Emits a JavaScript closure expression into a
 /// `data-topcoat-on:<event>` attribute on the element. The browser scanner
 /// wraps it in `new Function('__context', …)` to obtain a real handler.
-pub struct EventHandler<K, Body> {
+pub struct EventHandler<K, F> {
     key: K,
-    value: ExprClosure<(Event,), Body>,
+    value: Expr<F>,
 }
 
-impl<K, Body> EventHandler<K, Body> {
+impl<K, F> EventHandler<K, F>
+where
+    F: Fn(Event),
+{
     #[inline]
-    pub fn new(key: K, value: ExprClosure<(Event,), Body>) -> Self {
+    pub fn new(key: K, value: Expr<F>) -> Self {
         Self { key, value }
     }
 }
 
-impl<K, Body> IntoViewParts for EventHandler<K, Body>
+impl<K, F> IntoViewParts for EventHandler<K, F>
 where
-    K: IntoViewParts,
-    Body: Expr,
+    K: IntoViewParts + Clone,
 {
     fn into_view_parts(self) -> impl Iterator<Item = ViewPart> {
-        let mut js = String::new();
-        let mut formatter = Formatter::new(&mut js);
-        self.value.fmt_js(&mut formatter);
-
         Unescaped::new_unchecked(" data-topcoat-on:")
             .into_view_parts()
             .chain(self.key.into_view_parts())
             .chain(Unescaped::new_unchecked("=\"").into_view_parts())
-            .chain(js.into_view_parts())
+            .chain(self.value.js().to_owned().into_view_parts())
             .chain(Unescaped::new_unchecked("\" ").into_view_parts())
     }
 }

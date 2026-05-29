@@ -9,7 +9,7 @@ impl Expr {
             return Err(syn::Error::new_spanned(path, "expected a bare identifier"));
         };
         Ok(quote! {
-            ::topcoat::interop::IntoExpr::into_expr(#ident)
+            ::topcoat::interop::ToExpr::to_expr(&#ident)
         })
     }
 }

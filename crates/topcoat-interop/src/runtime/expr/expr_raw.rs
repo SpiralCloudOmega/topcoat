@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::runtime::{Eval, FmtJs, Interpreter};
+use crate::runtime::{Eval, FmtJs};
 
 pub struct ExprRaw<T> {
     js: &'static [&'static str],
@@ -39,13 +39,4 @@ impl<T> FmtJs for ExprRaw<T> {
 
 impl<T> Eval for ExprRaw<T> {
     type Output = T;
-
-    fn eval(self, _interpreter: &mut Interpreter) -> Self::Output {
-        match self.eval_as {
-            Some(value) => value,
-            None => panic!(
-                "raw expression can only be evaluated if a rust value is provided, use `.eval_as(value)`"
-            ),
-        }
-    }
 }

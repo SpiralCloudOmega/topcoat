@@ -7,6 +7,7 @@ mod expr_lit;
 mod expr_method_call;
 
 use proc_macro2::TokenStream;
+use quote::{ToTokens, quote};
 use syn::parse::{Parse, ParseStream};
 
 /// The top-level `expr! { ... }` AST. A thin wrapper around `syn::Expr`; the
@@ -25,7 +26,10 @@ impl Parse for Expr {
 
 impl Expr {
     pub fn expr_to_tokens(&self) -> syn::Result<TokenStream> {
-        Self::dispatch(&self.inner)
+        let eval = &self.inner;
+        let js_ast = Self::dispatch(&self.inner)?;
+
+        Ok(quote! { ::topcoat::interop::Expr::new("".to_owned(), #eval) })
     }
 
     fn dispatch(expr: &syn::Expr) -> syn::Result<TokenStream> {

@@ -1,10 +1,7 @@
 use std::marker::PhantomData;
 
-use crate::runtime::{Eval, Expr, FmtJs, Formatter, Interpreter};
+use crate::runtime::{Eval, FmtJs, Formatter};
 
-/// A `receiver.field` access on a handler-internal value. The accessor closure
-/// passed to `new` exists purely so rustc resolves `T` from the receiver's
-/// real type — it is never invoked. Server-side `eval` is unreachable.
 pub struct ExprField<R, T> {
     receiver: R,
     name: &'static str,
@@ -13,7 +10,7 @@ pub struct ExprField<R, T> {
 
 impl<R, T> ExprField<R, T>
 where
-    R: Expr,
+    R: Eval,
 {
     pub fn new<F>(receiver: R, name: &'static str, _accessor: F) -> Self
     where
@@ -32,10 +29,6 @@ where
     R: Eval,
 {
     type Output = T;
-
-    fn eval(self, _interpreter: &mut Interpreter) -> Self::Output {
-        unreachable!("ExprField::eval called server-side; handler bodies do not run during SSR")
-    }
 }
 
 impl<R, T> FmtJs for ExprField<R, T>
