@@ -1,4 +1,4 @@
-use quote::quote;
+use quote::{ToTokens, quote};
 use syn::{
     Expr, Ident, Token,
     parse::{Parse, ParseStream},
@@ -28,9 +28,10 @@ impl WriteView for SignalDeclaration {
     fn write(&self, writer: &mut ViewWriter) {
         let ident = &self.ident;
         let expr = &self.expr;
+        writer.let_binding(&parse_quote! { #ident }, expr);
         writer.let_binding(
             &parse_quote! { #ident },
-            &parse_quote! { &::topcoat::runtime::Signal::new(#expr) },
+            &parse_quote! { ::topcoat::runtime::Signal::new(&#ident) },
         );
         writer.write_expr(quote! { ::topcoat::runtime::SignalDeclaration::new(#ident) });
     }

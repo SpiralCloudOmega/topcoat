@@ -28,15 +28,15 @@ impl Default for SignalId {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct Signal<T> {
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct Signal<'a, T> {
     id: SignalId,
-    value: T,
+    value: &'a T,
 }
 
-impl<T> Signal<T> {
+impl<'a, T> Signal<'a, T> {
     #[inline]
-    pub fn new(value: T) -> Self {
+    pub fn new(value: &'a T) -> Self {
         Self {
             id: SignalId::new(),
             value,
@@ -47,16 +47,16 @@ impl<T> Signal<T> {
         self.id
     }
 
-    pub(crate) fn read(&self) -> &T {
-        &self.value
+    pub(crate) fn read(&self) -> &'a T {
+        self.value
     }
 }
 
-pub struct SignalDeclaration<'a, T>(&'a Signal<T>);
+pub struct SignalDeclaration<'a, T>(Signal<'a, T>);
 
 impl<'a, T> SignalDeclaration<'a, T> {
     #[inline]
-    pub fn new(signal: &'a Signal<T>) -> Self {
+    pub fn new(signal: Signal<'a, T>) -> Self {
         Self(signal)
     }
 }

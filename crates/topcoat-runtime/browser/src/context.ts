@@ -1,4 +1,4 @@
-import type { WriteSignal } from "@maverick-js/signals";
+import type { WriteSignal as MaverickWriteSignal } from "@maverick-js/signals";
 
 import type { SignalId, SignalRegistry } from "./signal";
 
@@ -12,7 +12,7 @@ export class Context {
 	constructor(private readonly registry: SignalRegistry) {}
 
 	signal(id: SignalId): WriteSignal<unknown> {
-		return this.registry.handle(id);
+		return new WriteSignal(this.registry.handle(id));
 	}
 
 	get builtin() {
@@ -26,7 +26,7 @@ const builtin = {
 	},
 };
 
-class f64 {
+export class f64 {
 	constructor(private readonly v: number) {}
 
 	add(other: f64): f64 {
@@ -47,5 +47,25 @@ class f64 {
 
 	toString(): string {
 		return this.v.toString();
+	}
+}
+
+export class Ref<T> {
+	constructor(private readonly pointee: T) {}
+
+	deref(): T {
+		return this.pointee;
+	}
+}
+
+class WriteSignal<T> {
+	constructor(private readonly inner: MaverickWriteSignal<Ref<T>>) {}
+
+	read(): Ref<T> {
+		return this.inner();
+	}
+
+	set(v: T): void {
+		this.inner.set(new Ref(v));
 	}
 }

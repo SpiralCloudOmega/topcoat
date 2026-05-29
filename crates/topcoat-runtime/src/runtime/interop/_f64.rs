@@ -1,10 +1,18 @@
+use ref_cast::{RefCastCustom, ref_cast_custom};
 use std::fmt::Write;
 use topcoat_view::runtime::IntoViewParts;
 
 use crate::runtime::Interop;
 
+#[derive(RefCastCustom, Clone, Copy)]
+#[repr(transparent)]
 #[allow(non_camel_case_types)]
 pub struct f64(core::primitive::f64);
+
+impl f64 {
+    #[ref_cast_custom]
+    pub(crate) const fn from_ref(v: &core::primitive::f64) -> &Self;
+}
 
 impl Interop for core::primitive::f64 {
     type Surrogate = f64;
@@ -15,6 +23,10 @@ impl Interop for core::primitive::f64 {
 
     fn into_surrogate(self) -> Self::Surrogate {
         f64(self)
+    }
+
+    fn to_surrogate_ref(&self) -> &Self::Surrogate {
+        f64::from_ref(self)
     }
 }
 
