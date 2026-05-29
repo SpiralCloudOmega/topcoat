@@ -2,13 +2,14 @@ use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
 use syn::Stmt;
 
-use crate::ast::expr::Expr;
+use crate::ast::expr::{Expr, name_resolver::NameResolver};
 
 impl Expr {
     pub(super) fn stmt(
         stmt: &Stmt,
         rust: &mut TokenStream,
         js: &mut String,
+        names: &mut NameResolver,
         is_last: bool,
     ) -> syn::Result<()> {
         match stmt {
@@ -17,16 +18,20 @@ impl Expr {
                     syn::Error::new_spanned(local, "let binding requires an initializer")
                 })?;
                 if let Some((_, diverge)) = &init.diverge {
-                    return Err(syn::Error::new_spanned(diverge, "let-else is not supported"));
+                    return Err(syn::Error::new_spanned(
+                        diverge,
+                        "let-else is not supported",
+                    ));
                 }
 
                 js.push_str("let ");
                 let mut pat = TokenStream::new();
-                Self::pat(&local.pat, &mut pat, js)?;
+                let (ident, name) = Self::pat(&local.pat, &mut pat, js, names)?;
                 js.push_str(" = ");
                 let mut value = TokenStream::new();
-                Self::dispatch(&init.expr, &mut value, js)?;
+                Self::dispatch(&init.expr, &mut value, js, names)?;
                 js.push_str("; ");
+                names.bind_local(&ident, name)?;
 
                 quote! { let #pat = #value; }.to_tokens(rust);
             }
@@ -39,7 +44,7 @@ impl Expr {
                 }
 
                 let mut value = TokenStream::new();
-                Self::dispatch(expr, &mut value, js)?;
+                Self::dispatch(expr, &mut value, js, names)?;
 
                 if returns {
                     js.push(';');
