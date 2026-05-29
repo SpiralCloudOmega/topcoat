@@ -43,23 +43,38 @@ impl Expr {
         // into the JavaScript source at runtime as `const` bindings, declared
         // ahead of the returned expression.
         let externals = Externals::collect(&self.inner);
-        let js_externals = externals.iter().map(|ident| {
-            let prefix = format!("const {ident} = ");
-            quote! { __js += #prefix; ::topcoat::runtime::Interop::to_js(&#ident, &mut __js); __js += ";"; }
+        let js_externals = externals.iter().enumerate().map(|(i, ident)| {
+            let prefix = if i == 0 {
+                format!("(() => {{ const {ident} = ")
+            } else {
+                format!("; const {ident} = ")
+            };
+            quote! {
+                __js += #prefix;
+                ::topcoat::runtime::Interop::to_js(&#ident, &mut __js);
+            }
         });
         let rust_externals = externals.iter().map(|ident| {
             quote! { let #ident = ::topcoat::runtime::Interop::into_surrogate(#ident); }
         });
 
-        let tail = format!(" return {js}; }})()");
+        let js_head = if externals.is_empty() {
+            quote! { __js += "(() => {"; }
+        } else {
+            quote! { #(#js_externals)* }
+        };
+        let js_tail = if externals.is_empty() {
+            format!(" return {js}; }})()")
+        } else {
+            format!("; return {js}; }})()")
+        };
 
         Ok(quote! {{
             let mut __js = String::new();
-            __js += "(() => {";
-            #(#js_externals)*
+            #js_head
             #(#rust_externals)*
             let __rust = #rust;
-            __js += #tail;
+            __js += #js_tail;
             ::topcoat::runtime::Expr::new(__rust, __js)
         }})
     }
@@ -80,5 +95,67 @@ impl Expr {
             other => return Err(syn::Error::new_spanned(other, "unsupported expression")),
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Expr;
+
+    fn expand(input: &str) -> String {
+        syn::parse_str::<Expr>(input)
+            .unwrap()
+            .expr_to_tokens()
+            .unwrap()
+            .to_string()
+    }
+
+    #[test]
+    fn emits_tail_after_rust_expression_without_externals() {
+        let expanded = expand("1 + 2");
+
+        assert_eq!(expanded.matches("__js +=").count(), 2, "{expanded}");
+        assert!(expanded.contains("\"(() => {\""), "{expanded}");
+        assert!(expanded.contains("\" return 1 + 2; })()\""), "{expanded}");
+        assert!(
+            expanded.find("let __rust").unwrap()
+                < expanded.find("\" return 1 + 2; })()\"").unwrap(),
+            "{expanded}"
+        );
+    }
+
+    #[test]
+    fn folds_wrapper_strings_into_single_external_capture_prefix() {
+        let expanded = expand("smep + 1");
+
+        assert_eq!(expanded.matches("__js +=").count(), 2, "{expanded}");
+        assert!(expanded.contains("\"(() => {const smep = \""), "{expanded}");
+        assert!(
+            expanded.contains("\"; return smep + 1; })()\""),
+            "{expanded}"
+        );
+        assert!(
+            expanded.find("let __rust").unwrap()
+                < expanded.find("\"; return smep + 1; })()\"").unwrap(),
+            "{expanded}"
+        );
+    }
+
+    #[test]
+    fn folds_separator_strings_between_external_captures() {
+        let expanded = expand("smep + blep");
+
+        assert_eq!(expanded.matches("__js +=").count(), 3, "{expanded}");
+        assert!(expanded.contains("\"(() => {const smep = \""), "{expanded}");
+        assert!(expanded.contains("\";const blep = \""), "{expanded}");
+        assert!(
+            expanded.contains("\"; return smep + blep; })()\""),
+            "{expanded}"
+        );
+        assert!(
+            expanded.find("let __rust").unwrap()
+                < expanded.find("\"; return smep + blep; })()\"").unwrap(),
+            "{expanded}"
+        );
     }
 }
