@@ -1,7 +1,6 @@
 use ref_cast::{RefCastCustom, ref_cast_custom};
-use std::fmt::Write;
 
-use crate::runtime::Interop;
+use crate::runtime::{Surrogated, impl_surrogate, impl_surrogate_mut, impl_surrogate_ref};
 
 #[derive(RefCastCustom, Clone, Copy)]
 #[repr(transparent)]
@@ -9,25 +8,20 @@ use crate::runtime::Interop;
 pub struct f64(core::primitive::f64);
 
 impl f64 {
+    #[inline]
+    pub(crate) const fn new(v: core::primitive::f64) -> Self {
+        Self(v)
+    }
+
     #[ref_cast_custom]
-    pub(crate) const fn from_ref(v: &core::primitive::f64) -> &Self;
+    pub(crate) const fn ref_cast(v: &core::primitive::f64) -> &Self;
+    #[ref_cast_custom]
+    pub(crate) const fn ref_cast_mut(v: &mut core::primitive::f64) -> &mut Self;
 }
 
-impl Interop for core::primitive::f64 {
-    type Surrogate = f64;
-
-    fn to_js(&self, out: &mut String) {
-        write!(out, "__context.builtin.f64({self})").unwrap();
-    }
-
-    fn into_surrogate(self) -> Self::Surrogate {
-        f64(self)
-    }
-
-    fn to_surrogate_ref(&self) -> &Self::Surrogate {
-        f64::from_ref(self)
-    }
-}
+impl_surrogate!(core::primitive::f64, f64);
+impl_surrogate_ref!(core::primitive::f64, f64);
+impl_surrogate_mut!(core::primitive::f64, f64);
 
 macro_rules! impl_binary_op {
     ($trait:ident, $method:ident, $op:tt) => {

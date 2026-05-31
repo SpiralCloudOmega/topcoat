@@ -3,7 +3,7 @@ use quote::{ToTokens, quote};
 use std::fmt::Write;
 use syn::{ExprLit, Lit};
 
-use crate::{ast::expr::Expr, runtime::Interop};
+use crate::{ast::expr::Expr, runtime::Surrogated};
 
 impl Expr {
     pub(super) fn expr_lit(
