@@ -21,8 +21,13 @@ pub use view::*;
 pub mod internal {
     use crate::runtime::{
         AttributeKeyViewParts, AttributeValueViewParts, AttributeViewParts, ElementNameViewParts,
-        NodeViewParts, ViewPart,
+        NodeViewParts, Unescaped, ViewPart,
     };
+
+    #[inline(always)]
+    pub fn __unescaped(s: &'static str) -> impl Iterator<Item = ViewPart> {
+        NodeViewParts::into_view_parts(Unescaped::new_unchecked(s))
+    }
 
     #[inline(always)]
     pub fn __attributes(attributes: impl AttributeViewParts) -> impl Iterator<Item = ViewPart> {

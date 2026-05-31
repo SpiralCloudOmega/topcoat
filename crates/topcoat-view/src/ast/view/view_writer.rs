@@ -40,8 +40,8 @@ impl ViewWriter {
         if !self.static_segment.is_empty() {
             let static_segment = &self.static_segment;
             self.chunks.push(Chunk::Expr {
-                kind: ExprKind::Node,
-                tokens: quote! { ::topcoat::view::Unescaped::new_unchecked(#static_segment) },
+                kind: ExprKind::Unescaped,
+                tokens: quote! { #static_segment },
             });
             self.static_segment.clear();
         }
@@ -241,6 +241,7 @@ impl ViewWriter {
 /// the corresponding `*ViewParts` trait.
 #[derive(Copy, Clone)]
 pub(crate) enum ExprKind {
+    Unescaped,
     Node,
     ElementName,
     AttributeKey,
@@ -251,6 +252,7 @@ pub(crate) enum ExprKind {
 impl ExprKind {
     fn helper(self) -> Ident {
         let name = match self {
+            Self::Unescaped => "__unescaped",
             Self::Node => "__node",
             Self::ElementName => "__element_name",
             Self::AttributeKey => "__attribute_key",
