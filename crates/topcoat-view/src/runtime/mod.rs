@@ -37,6 +37,13 @@ pub mod internal {
     }
 
     #[inline(always)]
+    pub fn __attribute_unescaped(
+        (key, value): (&'static str, impl AttributeValueViewParts),
+    ) -> impl Iterator<Item = ViewPart> {
+        Attribute::new(Unescaped::new_unchecked(key), value).into_view_parts()
+    }
+
+    #[inline(always)]
     pub fn __attribute_key(
         attribute_key: impl AttributeKeyViewParts,
     ) -> impl Iterator<Item = ViewPart> {
