@@ -75,7 +75,7 @@ impl Expr {
             #(#rust_externals)*
             let mut __js = String::new();
             #js_head
-            let __rust = #rust;
+            let __rust = ::topcoat::runtime::Surrogate::into_real(#rust);
             __js += #js_tail;
             ::topcoat::runtime::Expr::new(__rust, __js)
         }})

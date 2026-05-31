@@ -5,10 +5,15 @@ pub use _f64::*;
 pub use signal::*;
 
 pub trait Surrogated {
-    type Surrogate;
+    type Surrogate: Surrogate<Real = Self>;
 
     fn into_surrogate(self) -> Self::Surrogate;
-    fn from_surrogate(surrogate: Self::Surrogate) -> Self;
+}
+
+pub trait Surrogate {
+    type Real: Surrogated<Surrogate = Self>;
+
+    fn into_real(self) -> Self::Real;
 }
 
 pub trait ToJs {
@@ -20,7 +25,7 @@ macro_rules! impl_surrogate {
         $({$($g:tt)*})? $real:ty, $surrogate:ty
         $(where $($w:tt)*)?
     ) => {
-        impl<$($($g)*)?> Surrogated for $real
+        impl<$($($g)*)?> $crate::runtime::Surrogated for $real
         $(where $($w)*)?
         {
             type Surrogate = $surrogate;
@@ -28,9 +33,15 @@ macro_rules! impl_surrogate {
             fn into_surrogate(self) -> Self::Surrogate {
                 <$surrogate>::new(self)
             }
+        }
 
-            fn from_surrogate(surrogate: Self::Surrogate) -> Self {
-                surrogate.0
+        impl<$($($g)*)?> $crate::runtime::Surrogate for $surrogate
+        $(where $($w)*)?
+        {
+            type Real = $real;
+
+            fn into_real(self) -> Self::Real {
+                self.0
             }
         }
     };
@@ -42,7 +53,7 @@ macro_rules! impl_surrogate_ref {
         $({$($g:tt)*})? $real:ty, $surrogate:ty
         $(where $($w:tt)*)?
     ) => {
-        impl<'__lifetime, $($($g)*)?> Surrogated for &'__lifetime $real
+        impl<'__lifetime, $($($g)*)?> $crate::runtime::Surrogated for &'__lifetime $real
         $(where $($w)*)?
         {
             type Surrogate = &'__lifetime $surrogate;
@@ -50,9 +61,15 @@ macro_rules! impl_surrogate_ref {
             fn into_surrogate(self) -> Self::Surrogate {
                 <$surrogate>::ref_cast(self)
             }
+        }
 
-            fn from_surrogate(surrogate: Self::Surrogate) -> Self {
-                &surrogate.0
+        impl<'__lifetime, $($($g)*)?> $crate::runtime::Surrogate for &'__lifetime $surrogate
+        $(where $($w)*)?
+        {
+            type Real = &'__lifetime $real;
+
+            fn into_real(self) -> Self::Real {
+                &self.0
             }
         }
     };
@@ -64,7 +81,7 @@ macro_rules! impl_surrogate_mut {
         $({$($g:tt)*})? $real:ty, $surrogate:ty
         $(where $($w:tt)*)?
     ) => {
-        impl<'__lifetime, $($($g)*)?> Surrogated for &'__lifetime mut $real
+        impl<'__lifetime, $($($g)*)?> $crate::runtime::Surrogated for &'__lifetime mut $real
         $(where $($w)*)?
         {
             type Surrogate = &'__lifetime mut $surrogate;
@@ -72,9 +89,15 @@ macro_rules! impl_surrogate_mut {
             fn into_surrogate(self) -> Self::Surrogate {
                 <$surrogate>::ref_cast_mut(self)
             }
+        }
 
-            fn from_surrogate(surrogate: Self::Surrogate) -> Self {
-                &mut surrogate.0
+        impl<'__lifetime, $($($g)*)?> $crate::runtime::Surrogate for &'__lifetime mut $surrogate
+        $(where $($w)*)?
+        {
+            type Real = &'__lifetime mut $real;
+
+            fn into_real(self) -> Self::Real {
+                &mut self.0
             }
         }
     };

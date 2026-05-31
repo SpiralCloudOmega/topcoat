@@ -2,7 +2,7 @@ use std::fmt::Write;
 
 use ref_cast::RefCast;
 
-use crate::runtime::{Surrogated, ToJs, impl_surrogate, impl_surrogate_mut, impl_surrogate_ref};
+use crate::runtime::{ToJs, impl_surrogate, impl_surrogate_mut, impl_surrogate_ref};
 
 #[derive(Debug, RefCast, Clone, Copy)]
 #[repr(transparent)]
