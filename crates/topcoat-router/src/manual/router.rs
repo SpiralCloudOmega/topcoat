@@ -2,7 +2,7 @@ use std::{any::Any, sync::Arc};
 
 use axum::{
     extract::Query,
-    response::{Html, IntoResponse},
+    response::Html,
     routing::{MethodFilter, get, on},
 };
 use serde::Deserialize;
@@ -10,7 +10,10 @@ use topcoat_asset::{AssetBundle, AssetFragmentResolver, ServeAssetBundle};
 use topcoat_core::context::{MaybeAborted, State, WatchAbort};
 use topcoat_runtime::runtime::{DynShard, EncodedSignals, Shards};
 
-use crate::{CxBody, Error, Layout, Layouts, Page, Pages, Route, Routes, not_found};
+use crate::{
+    CxBody, IntoResponse, Layout, Layouts, Page, Pages, Route, Routes, not_found,
+    result_into_response,
+};
 
 /// The core routing primitive that collects [`Page`]s, [`Layout`]s, and
 /// [`Route`]s, matches layouts to pages by path prefix, and converts into an
@@ -223,8 +226,9 @@ impl From<Router> for axum::Router {
                     .await;
 
                     match result {
-                        MaybeAborted::Completed(Ok(view)) => Html(view.render(&cx)).into_response(),
-                        MaybeAborted::Completed(Err(error)) => error.into_response(),
+                        MaybeAborted::Completed(result) => {
+                            result_into_response(result.map(|view| Html(view.render(&cx))))
+                        }
                         MaybeAborted::Aborted(_value) => {
                             panic!("request was aborted with an unrecognized type");
                         }
@@ -243,7 +247,7 @@ impl From<Router> for axum::Router {
                         let result = WatchAbort::new(&cx, route.handle(&cx, body)).await;
 
                         match result {
-                            MaybeAborted::Completed(value) => value.into_response(),
+                            MaybeAborted::Completed(result) => result_into_response(result),
                             MaybeAborted::Aborted(_value) => {
                                 panic!("request was aborted with an unrecognized type");
                             }
@@ -270,16 +274,8 @@ impl From<Router> for axum::Router {
                         let result = shard
                             .dyn_render(&cx, EncodedSignals::new(signal_param))
                             .await;
-                        match result {
-                            Ok(view) => Html(view.render(&cx)).into_response(),
-                            Err(error) => {
-                                if let Ok(error) = error.downcast::<Error>() {
-                                    error.into_response()
-                                } else {
-                                    panic!("shard has unknown error type");
-                                }
-                            }
-                        }
+
+                        result_into_response(result.map(|view| Html(view.render(&cx))))
                     },
                 ),
             );

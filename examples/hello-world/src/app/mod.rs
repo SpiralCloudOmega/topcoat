@@ -5,9 +5,10 @@ mod posts;
 use std::time::Duration;
 
 use topcoat::{
+    Result,
     asset::asset,
     context::{Cx, memoize},
-    router::{Result, Slot, layout, page},
+    router::{Slot, layout, page},
     runtime::{ReadSignal, Shard},
     tailwind,
     view::{component, shard, view},
@@ -155,7 +156,7 @@ async fn combobox_content(cx: &Cx, input: ReadSignal<String>) -> Result {
 }
 
 #[component]
-async fn combobox(content: Shard<(ReadSignal<String>,), topcoat::router::Error>) -> Result {
+async fn combobox(content: Shard<(ReadSignal<String>,)>) -> Result {
     view! {
         signal input = "".to_owned();
         <div>

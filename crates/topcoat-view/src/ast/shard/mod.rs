@@ -47,19 +47,11 @@ impl ToTokens for Shard {
             }
         }
 
-        let return_ty = match &item.sig.output {
-            ReturnType::Type(_, ty) => ty,
-            ReturnType::Default => unreachable!(),
-        };
-
         let id = Uuid::new_v4().to_string();
 
         quote! {
             #[allow(non_upper_case_globals)]
-            const #ident: ::topcoat::runtime::Shard<
-                (#(#signal_types,)*),
-                <#return_ty as ::topcoat::internal::ResultExt>::E,
-            > = ::topcoat::runtime::Shard::new(
+            const #ident: ::topcoat::runtime::Shard<(#(#signal_types,)*)> = ::topcoat::runtime::Shard::new(
                 ::topcoat::runtime::ShardId::new(#id),
                 |cx, signals| {
                     #item

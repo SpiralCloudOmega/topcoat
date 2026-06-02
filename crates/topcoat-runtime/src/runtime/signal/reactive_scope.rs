@@ -1,5 +1,5 @@
 use serde::Serialize;
-use topcoat_core::context::Cx;
+use topcoat_core::{context::Cx, error::Error};
 use topcoat_view::runtime::{NodeViewParts, Unescaped, View, ViewParts};
 use uuid::Uuid;
 
@@ -32,7 +32,7 @@ pub struct ReactiveScope {
 
 impl ReactiveScope {
     #[inline]
-    pub async fn new<S, E>(cx: &Cx, signals: S, shard: Shard<S, E>) -> Result<Self, E>
+    pub async fn new<S>(cx: &Cx, signals: S, shard: Shard<S>) -> Result<Self, Error>
     where
         S: Signals,
     {

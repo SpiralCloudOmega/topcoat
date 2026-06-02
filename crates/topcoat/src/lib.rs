@@ -6,6 +6,13 @@ pub mod dev;
 #[cfg(feature = "router")]
 mod serve;
 
+pub use topcoat_core::error::Error;
+
+#[cfg(feature = "view")]
+pub type Result<T = view::View, E = topcoat_core::error::Error> = topcoat_core::error::Result<T, E>;
+#[cfg(not(feature = "view"))]
+pub type Result<T, E = topcoat_core::error::Error> = topcoat_core::error::Result<T, E>;
+
 #[cfg(feature = "asset")]
 pub mod asset {
     pub use topcoat_asset::*;

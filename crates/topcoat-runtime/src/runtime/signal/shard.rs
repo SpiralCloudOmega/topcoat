@@ -1,11 +1,10 @@
 use std::{
-    any::Any,
     collections::HashSet,
     hash::{Hash, Hasher},
     pin::Pin,
 };
 
-use topcoat_core::context::Cx;
+use topcoat_core::{context::Cx, error::Error};
 
 use topcoat_view::runtime::View;
 
@@ -24,19 +23,19 @@ impl ShardId {
     }
 }
 
-pub type ShardRenderFn<S, E> =
+pub type ShardRenderFn<S> =
     for<'cx> fn(
         cx: &'cx Cx,
         signals: S,
-    ) -> Pin<Box<dyn Future<Output = Result<View, E>> + Send + 'cx>>;
+    ) -> Pin<Box<dyn Future<Output = Result<View, Error>> + Send + 'cx>>;
 
-pub struct Shard<S, E> {
+pub struct Shard<S> {
     id: ShardId,
-    render: ShardRenderFn<S, E>,
+    render: ShardRenderFn<S>,
 }
 
-impl<S, E> Shard<S, E> {
-    pub const fn new(id: ShardId, render: ShardRenderFn<S, E>) -> Self {
+impl<S> Shard<S> {
+    pub const fn new(id: ShardId, render: ShardRenderFn<S>) -> Self {
         Self { id, render }
     }
 
@@ -44,13 +43,12 @@ impl<S, E> Shard<S, E> {
         self.id
     }
 
-    pub async fn render(&self, cx: &Cx, signals: S) -> Result<View, E> {
+    pub async fn render(&self, cx: &Cx, signals: S) -> Result<View, Error> {
         (self.render)(cx, signals).await
     }
 }
 
-type RenderDynShardFut<'cx> =
-    Pin<Box<dyn Future<Output = Result<View, Box<dyn Any + Send + Sync>>> + Send + 'cx>>;
+type RenderDynShardFut<'cx> = Pin<Box<dyn Future<Output = Result<View, Error>> + Send + 'cx>>;
 
 pub trait DynShard: Send + Sync + 'static {
     fn id(&self) -> ShardId;
@@ -61,10 +59,9 @@ pub trait DynShard: Send + Sync + 'static {
     ) -> RenderDynShardFut<'cx>;
 }
 
-impl<S, E> DynShard for Shard<S, E>
+impl<S> DynShard for Shard<S>
 where
     S: Signals + Send + Sync + 'static,
-    E: Send + Sync + 'static,
 {
     fn id(&self) -> ShardId {
         self.id
@@ -74,12 +71,8 @@ where
         &'static self,
         cx: &'cx Cx,
         signals: EncodedSignals,
-    ) -> Pin<Box<dyn Future<Output = Result<View, Box<dyn Any + Send + Sync>>> + Send + 'cx>> {
-        Box::pin(async move {
-            (self.render)(cx, S::decode(signals))
-                .await
-                .map_err(|e| Box::new(e) as Box<dyn Any + Send + Sync>)
-        })
+    ) -> Pin<Box<dyn Future<Output = Result<View, Error>> + Send + 'cx>> {
+        Box::pin(async move { (self.render)(cx, S::decode(signals)).await })
     }
 }
 
