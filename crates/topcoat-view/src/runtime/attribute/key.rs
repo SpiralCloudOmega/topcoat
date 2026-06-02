@@ -23,7 +23,7 @@ impl_primitive!(ViewPart);
 impl_primitive!(String);
 impl_primitive!(Unescaped<String>);
 
-impl<'a> AttributeKeyViewParts for &'a str {
+impl AttributeKeyViewParts for &str {
     #[inline]
     fn into_view_parts(self, parts: &mut ViewParts) {
         let part: ViewPart = self.to_owned().into();
@@ -31,7 +31,7 @@ impl<'a> AttributeKeyViewParts for &'a str {
     }
 }
 
-impl<'a> AttributeKeyViewParts for Unescaped<&'a str> {
+impl AttributeKeyViewParts for Unescaped<&str> {
     #[inline]
     fn into_view_parts(self, parts: &mut ViewParts) {
         let part: ViewPart = Unescaped::new_unchecked(String::from(*self)).into();
