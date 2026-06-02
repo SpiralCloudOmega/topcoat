@@ -60,6 +60,15 @@ impl<T> Signal<T> {
     }
 }
 
+impl<T> Signal<T>
+where
+    T: Clone,
+{
+    pub(crate) fn get(&self) -> T {
+        self.value.clone()
+    }
+}
+
 pub struct SignalDeclaration<'a, T>(&'a Signal<T>);
 
 impl<'a, T> SignalDeclaration<'a, T> {

@@ -154,10 +154,10 @@ async fn combobox_content(cx: &Cx, input: ReadSignal<String>) -> Result {
 #[component]
 async fn combobox(content: Shard<(ReadSignal<String>,)>) -> Result {
     view! {
-        signal input = "".to_owned();
+        signal input = "apple".to_owned();
         <div>
             <input
-                :value=((*input.read()).clone())
+                :value=(input.get())
                 @input=(|e: topcoat::runtime::Event| input.set(e.target.value) )
             >
             track content(input)

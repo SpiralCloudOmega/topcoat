@@ -9,6 +9,10 @@ export class WriteSignal<T> {
 		return this.inner();
 	}
 
+	get(): T {
+		return (this.read().deref() as { clone: () => T }).clone();
+	}
+
 	set(v: T): void {
 		this.inner.set(new Ref(v));
 	}

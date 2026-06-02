@@ -19,13 +19,26 @@ impl<T> WriteSignal<T> {
 
 impl<T> WriteSignal<T>
 where
-    T: Surrogated,
     for<'b> &'b T: Surrogated,
 {
     pub fn read(&self) -> <&T as Surrogated>::Surrogate {
         self.0.read().into_surrogate()
     }
+}
 
+impl<T> WriteSignal<T>
+where
+    T: Surrogated + Clone,
+{
+    pub fn get(&self) -> <T as Surrogated>::Surrogate {
+        self.0.get().into_surrogate()
+    }
+}
+
+impl<T> WriteSignal<T>
+where
+    T: Surrogated,
+{
     pub fn set(&self, _v: T::Surrogate) {
         panic!("expressions in which a signal is written to cannot be run server-side");
     }
