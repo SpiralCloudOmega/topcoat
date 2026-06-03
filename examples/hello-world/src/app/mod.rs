@@ -160,6 +160,7 @@ async fn combobox(content: Shard<(ReadSignal<String>,)>) -> Result {
                 :value=$(input.get())
                 @input="(e) => console.log('kek')"
             >
+            $(1.0 + 2.0)
             track content(input)
         </div>
     }

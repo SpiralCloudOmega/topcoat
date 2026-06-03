@@ -5,7 +5,13 @@ use syn::{
     parse::{Parse, ParseStream},
 };
 
-use crate::ast::ParseOption;
+use crate::ast::{
+    ParseOption,
+    view::{
+        ExprKind,
+        view_writer::{ViewWriter, WriteView},
+    },
+};
 
 /// A `$(`...`)` runtime expression, lowered through `runtime::expr!`.
 #[derive(Debug, PartialEq)]
@@ -13,6 +19,13 @@ pub struct RuntimeExpr {
     pub dollar: Token![$],
     pub paren: syn::token::Paren,
     pub expr: syn::Expr,
+}
+
+impl WriteView for RuntimeExpr {
+    fn write(&self, writer: &mut ViewWriter) {
+        let expr = &self.expr;
+        writer.write_expr(ExprKind::Node, self.to_token_stream());
+    }
 }
 
 impl Parse for RuntimeExpr {
