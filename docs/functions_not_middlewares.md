@@ -1,12 +1,12 @@
 # Functions, not middlewares
 
-Developers coming from other frameworks may be used to guarding their API routes with middlewares or extractors, e.g. to protect against invalid requests or unauthenticated users. In Topcoat, there is another more idiomatic way which should be preferred. Topcoat encourages the use of short, composable functions that take a `cx: &Cx` parameter to do validation and data fetching.
+Developers coming from other frameworks may be used to guarding API routes with middlewares or extractors, for example to reject invalid requests or unauthenticated users. In Topcoat, there is a more idiomatic approach that should be preferred: short, composable functions that take a `cx: &Cx` parameter and perform validation or data fetching directly.
 
 ## What not to do
 
 ### Middleware
 
-Middleware often pushes authentication away from the code that needs the authenticated user. The middleware authenticates the request, stores the user somewhere ambient, and the page assumes the middleware has already run.
+Middleware often pushes authentication away from the code that needs the authenticated user. The middleware authenticates the request and stores the user somewhere ambient, while the page assumes the middleware has already run.
 
 ```rust
 async fn auth_middleware(request: &mut Request) {
@@ -24,7 +24,7 @@ async fn account_page(request: &Request) -> Html {
 }
 ```
 
-That can work, but it makes the page depend on configuration that lives somewhere else. If the middleware is missing or ordered incorrectly, the handler can panic. If a protected route is added without the middleware, the route can accidentally expose data.
+That can work, but it makes the page depend on configuration that lives somewhere else. If the middleware is missing or ordered incorrectly, the handler can panic. If a protected route is added without the middleware, it can accidentally expose data.
 
 ### Extractors
 
@@ -36,7 +36,7 @@ async fn account_page(Auth(user): Auth) -> Html {
 }
 ```
 
-This is more robust than middleware because the auth requirement is visible. The tradeoff is that every component below the page now needs the user passed through explicitly:
+This is more robust than middleware because the auth requirement is visible. The tradeoff is that every component below the page now needs to receive the user explicitly:
 
 ```rust
 async fn account_page(Auth(user): Auth) -> Html {
@@ -55,7 +55,7 @@ async fn user_avatar(user: User) -> Html {
 }
 ```
 
-That is fine for local data flow, but current-user state is usually ambient to the request. Passing it through every layout and component couples unrelated code just so a deep component can ask a simple question.
+That is fine for local data flow, but current-user state is usually ambient to the request. Passing it through every layout and component couples unrelated code just so a deeply nested component can ask a simple question.
 
 ## What to do in Topcoat
 
@@ -97,7 +97,7 @@ async fn require_auth(cx: &Cx) -> Result<&User, UnauthorizedError> {
 }
 ```
 
-`#[memoize]` stores the owned `Option<User>` for the request, but exposes it as `Option<&User>` to callers. That lets downstream helpers borrow the current user without cloning it or threading ownership through the component tree.
+`#[memoize]` stores the owned `Option<User>` for the request, but exposes it to callers as `Option<&User>`. That lets downstream helpers borrow the current user without cloning it or threading ownership through the component tree.
 
 Now the component that needs authentication declares it by calling `require_auth(cx)`:
 
@@ -122,9 +122,9 @@ async fn user_avatar(cx: &Cx) -> Result {
 }
 ```
 
-`user_avatar` is now guarded wherever it is used. If it appears on a page rendered without a valid session, the component falls through to Topcoat's unauthorized response. The requirement lives with the code that actually depends on it, so you do not need to remember to annotate every route that might eventually render the component.
+`user_avatar` is now guarded wherever it is used. If it appears on a page rendered without a valid session, the component falls through to Topcoat's unauthorized response. The requirement lives with the code that depends on it, so you do not need to remember to annotate every route that might eventually render the component.
 
-Because `fetch_user` is memoized, the database lookup runs at most once for the same user ID during a request. A layout can call `fetch_current_user(cx)` to render the nav, a page can call `require_auth(cx)` to protect private content, and a nested component can call `require_auth(cx)` again to render an avatar. Those calls are decoupled, but the expensive work is deduplicated.
+Because `fetch_user` is memoized, the database lookup runs at most once for the same user ID during a request. A layout can call `fetch_current_user(cx)` to render the nav, a page can call `require_auth(cx)` to protect private content, and a nested component can call `require_auth(cx)` again to render an avatar. The calls stay decoupled, while the expensive work is deduplicated.
 
 ### Shape the functions by meaning
 
@@ -135,7 +135,7 @@ Use several focused helpers instead of one large auth function:
 - `fetch_current_user(cx)` turns the session into optional user data.
 - `require_auth(cx)` turns optional user data into a fallback-aware result.
 
-That keeps each function reusable. Public UI can call `fetch_current_user(cx)` and render a signed-out state. Private UI can call `require_auth(cx).await?` and fail closed. Admin UI can build on top of it:
+That keeps each function reusable. Public UI can call `fetch_current_user(cx)` and render a signed-out state. Private UI can call `require_auth(cx).await?` and fail closed. Admin UI can build on the same pattern:
 
 ```rust
 use topcoat::{context::Cx, router::FallbackExt, Result};
