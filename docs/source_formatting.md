@@ -53,23 +53,21 @@ The formatter is macro-aware rather than token-only, so the same command is also
 This Neovim config uses `conform.nvim` and enables `topcoat fmt` for Rust buffers only when a `Topcoat.toml` marker exists in the project root.
 
 ```lua
-return {
-	conform = {
-		formatters = {
-			topcoat = {
-				command = "topcoat",
-				args = { "fmt", "--stdin" },
-				require_cwd = true,
-				cwd = function(self, ctx)
-					return require("conform.util").root_file({ "Topcoat.toml" })(self, ctx)
-				end,
-			},
-		},
-		formatters_by_ft = {
-			rust = { "topcoat", lsp_format = "first" },
+require("conform").setup({
+	formatters = {
+		topcoat = {
+			command = "topcoat",
+			args = { "fmt", "--stdin" },
+			require_cwd = true,
+			cwd = function(self, ctx)
+				return require("conform.util").root_file({ "Topcoat.toml" })(self, ctx)
+			end,
 		},
 	},
-}
+	formatters_by_ft = {
+		rust = { "topcoat", lsp_format = "first" },
+	},
+})
 ```
 
 Create a `Topcoat.toml` marker at the root of a Topcoat project to opt in:
