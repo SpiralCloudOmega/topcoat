@@ -11,8 +11,6 @@ use crate::ast::{
     view::{AttributeKey, AttributeValue, ExprKind, TemplateExpr, ViewWriter, WriteView},
 };
 
-/// A plain `name=value` attribute on an [`Element`](super::Element) or
-/// [`Component`](super::Component).
 pub struct Attribute {
     pub key: AttributeKey,
     pub eq: Token![=],
