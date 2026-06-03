@@ -78,7 +78,7 @@ fn db(cx: &Cx) -> Db {
 /// Fetches a user by ID, deduplicated for the duration of the request.
 #[memoize]
 async fn fetch_user(cx: &Cx, user_id: &str) -> Option<User> {
-    db(cx).fetch_user(user_id).await
+    User::fetch_by_id(user_id).exec(db(cx)).await
 }
 
 /// Reads the session ID from the request cookies.
