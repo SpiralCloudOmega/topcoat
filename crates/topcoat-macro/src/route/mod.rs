@@ -1,10 +1,12 @@
 use proc_macro2::{Span, TokenStream};
 use quote::{ToTokens, quote};
 use syn::{
-    FnArg, Ident, ItemFn, LitStr, Pat,
+    Ident, ItemFn, LitStr,
     parse::{Parse, ParseStream},
     parse_quote,
 };
+
+use crate::handler_args::{HandlerArgs, request_ident};
 
 pub struct RouteAttr {
     method: Option<Ident>,
@@ -22,34 +24,13 @@ impl Parse for RouteAttr {
 
 pub struct RouteItem {
     item: ItemFn,
-    args: Vec<Ident>,
+    args: HandlerArgs,
 }
 
 impl Parse for RouteItem {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let item: ItemFn = input.parse()?;
-        let mut args = Vec::new();
-        for arg in &item.sig.inputs {
-            match arg {
-                FnArg::Receiver(r) => {
-                    return Err(syn::Error::new_spanned(
-                        r,
-                        "route functions cannot take a `self` receiver",
-                    ));
-                }
-                FnArg::Typed(pat_type) => match &*pat_type.pat {
-                    Pat::Ident(pi) => {
-                        args.push(pi.ident.clone());
-                    }
-                    _ => {
-                        return Err(syn::Error::new_spanned(
-                            pat_type,
-                            "route functions only accept an optional `cx: &Cx` parameter",
-                        ));
-                    }
-                },
-            }
-        }
+        let args = HandlerArgs::parse(&item, "route")?;
         Ok(Self { item, args })
     }
 }
@@ -75,7 +56,14 @@ impl ToTokens for Route {
             .inputs
             .insert(0, parse_quote! { __cx: &'__cx ::topcoat::context::Cx });
         let ident = &item.sig.ident;
-        let args = &self.1.args;
+        let args = self.1.args.call_args();
+        let parse_request = self.1.args.request().map(|request| {
+            let request_ident = request_ident();
+            let request_ty = &request.ty;
+            quote! {
+                let #request_ident = <#request_ty as ::topcoat::router::FromRequest>::from_request(cx, body).await?;
+            }
+        });
 
         let default_method = Ident::new("GET", Span::call_site());
         let method = self.0.method.as_ref().unwrap_or(&default_method);
@@ -83,7 +71,10 @@ impl ToTokens for Route {
         let render = quote! {
             |cx, body| {
                 #item
-                Box::pin(#ident(cx, #(#args),*))
+                Box::pin(async move {
+                    #parse_request
+                    ::topcoat::router::IntoResponse::into_response(#ident(cx, #(#args),*).await?)
+                })
             }
         };
 

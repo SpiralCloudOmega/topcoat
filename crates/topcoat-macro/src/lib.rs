@@ -2,6 +2,8 @@ mod memoize;
 mod quote_option;
 
 #[cfg(feature = "router")]
+mod handler_args;
+#[cfg(feature = "router")]
 mod layout;
 #[cfg(feature = "router")]
 mod page;
