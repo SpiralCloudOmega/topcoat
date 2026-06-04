@@ -22,7 +22,7 @@ use crate::Response;
 /// }
 /// ```
 pub fn bad_request(description: impl Into<String>) -> BadRequestError {
-    BadRequestError::new(description.into())
+    BadRequestError::new(None, description.into())
 }
 
 /// Builds a bad-request (HTTP 400) response whose description includes an
@@ -36,12 +36,7 @@ pub fn bad_request_at(
 ) -> BadRequestError {
     let path = path.to_string();
     let description = description.into();
-
-    if path == "." {
-        bad_request(description)
-    } else {
-        bad_request(format!("{path}: {description}"))
-    }
+    BadRequestError::new(Some(path), description)
 }
 
 /// A bad-request response carried as the `Err` variant of a handler `Result`.
@@ -49,12 +44,13 @@ pub fn bad_request_at(
 /// Construct one with [`bad_request`].
 #[derive(Debug)]
 pub struct BadRequestError {
+    path: Option<String>,
     description: String,
 }
 
 impl BadRequestError {
-    fn new(description: String) -> Self {
-        Self { description }
+    fn new(path: Option<String>, description: String) -> Self {
+        Self { description, path }
     }
 
     /// Returns the client-safe description of what was wrong with the request.
@@ -65,7 +61,10 @@ impl BadRequestError {
 
 impl std::fmt::Display for BadRequestError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "bad request: {}", self.description)
+        match &self.path {
+            Some(path) => write!(f, "bad request: {} (at `{path}`)", self.description),
+            None => write!(f, "bad request: {}", self.description),
+        }
     }
 }
 
