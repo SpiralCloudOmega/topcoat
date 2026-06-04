@@ -13,7 +13,7 @@ pub fn router() -> topcoat::router::Router {
 }
 ```
 
-Every `#[page]` and `#[layout]` in modules under `app` is automatically discovered and registered.
+Every `#[page]`, `#[layout]`, and `#[route]` in modules under `app` is automatically discovered and registered.
 
 ## How modules map to routes
 
@@ -27,7 +27,7 @@ Each module's path relative to the root module determines its URL. Module names 
 | `app::settings` | `/settings` |
 | `app::settings::profile` | `/settings/profile` |
 
-## Pages and layouts
+## Pages, layouts, and API routes
 
 A `#[page]` defines a route handler. A `#[layout]` wraps all pages in the same module and its submodules.
 
@@ -53,6 +53,29 @@ async fn about() -> Result {
     view! { <h1>"About"</h1> }
 }
 ```
+
+A `#[route]` defines an API endpoint at the same module-derived path. The HTTP method is written in the attribute:
+
+```rust
+// src/app/api/posts.rs — POST /api/posts
+use serde::{Deserialize, Serialize};
+use topcoat::{
+    Result,
+    router::{Json, route},
+};
+
+#[derive(Deserialize, Serialize)]
+struct CreatePost {
+    title: String,
+}
+
+#[route(POST)]
+async fn create_post(Json(input): Json<CreatePost>) -> Result<Json<CreatePost>> {
+    Ok(Json(input))
+}
+```
+
+Route functions can read a body with `Json<T>`, `Form<T>`, or any custom type that implements `FromRequest`. Their successful return value is converted with `IntoResponse`. See [Request and response bodies](./request_response.md).
 
 ## Renaming a static segment
 

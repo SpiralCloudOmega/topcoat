@@ -1,8 +1,8 @@
 # Router
 
-`topcoat::router::Router` is the core routing primitive. It collects pages and layouts, matches layouts to pages by path prefix, and converts into an `axum::Router` for serving.
+`topcoat::router::Router` is the core routing primitive. It collects pages, layouts, and API routes, matches layouts to pages by path prefix, and converts into an `axum::Router` for serving.
 
-You can register pages and layouts in two ways: **manually** (explicit paths, full control) or with **auto-discovery** (the `discover` feature collects annotated items automatically). The [module router](./module_router.md) builds on top of both — this document covers using `Router` directly.
+You can register pages, layouts, and routes in two ways: **manually** (explicit paths, full control) or with **auto-discovery** (the `discover` feature collects annotated items automatically). The [module router](./module_router.md) builds on top of both — this document covers using `Router` directly.
 
 ## Pages
 
@@ -94,9 +94,46 @@ async fn profile() -> Result {
 
 A request to `/settings/profile` renders: `root_layout` > `settings_layout` > `profile`.
 
+## API routes
+
+An API route is an async function annotated with `#[route]` and an explicit HTTP method and path:
+
+```rust
+use serde::{Deserialize, Serialize};
+use topcoat::{
+    Result,
+    router::{Json, route},
+};
+
+#[derive(Deserialize, Serialize)]
+struct CreatePost {
+    title: String,
+}
+
+#[route(POST "/api/posts")]
+async fn create_post(Json(input): Json<CreatePost>) -> Result<Json<CreatePost>> {
+    Ok(Json(input))
+}
+```
+
+The method is written before the path. If you omit the method, `GET` is used:
+
+```rust
+#[route("/api/health")]
+async fn health() -> Result<&'static str> {
+    Ok("ok")
+}
+```
+
+Route functions may take `cx: &Cx` and, alongside it, at most one request body parameter. The request parameter can be any type that implements `FromRequest`; the built-in `Json<T>` and `Form<T>` wrappers cover the common cases.
+
+Route functions return `Result<T>` where `T: IntoResponse`. The macro converts the successful value into an HTTP response automatically. For JSON responses, return `Result<Json<T>>`; a raw `Result<T>` only works if `T` itself implements `IntoResponse`.
+
+Request and response bodies are covered in more detail in [Request and response bodies](./request_response.md).
+
 ## Manual registration
 
-Build a router by chaining `.page()` and `.layout()`:
+Build a router by chaining `.page()`, `.layout()`, and `.route()`:
 
 ```rust
 use topcoat::router::Router;
@@ -108,6 +145,7 @@ pub fn router() -> Router {
         .page(home)
         .page(about)
         .page(profile)
+        .route(create_post)
 }
 ```
 
@@ -115,7 +153,7 @@ Order doesn't matter — layout-to-page matching is based on path prefixes, not 
 
 ## Auto-discovery with `discover()`
 
-With the `discover` feature enabled, every `#[page]` and `#[layout]` is automatically collected at link time. Instead of listing each item by hand, call `.discover()`:
+With the `discover` feature enabled, every `#[page]`, `#[layout]`, and `#[route]` is automatically collected at link time. Instead of listing each item by hand, call `.discover()`:
 
 ```rust
 pub fn router() -> Router {
@@ -147,9 +185,10 @@ let axum_router: axum::Router = router.into();
 ## Example: full manual setup
 
 ```rust
+use serde::{Deserialize, Serialize};
 use topcoat::{
     Result,
-    router::{Router, Slot, layout, page},
+    router::{Json, Router, Slot, layout, page, route},
     view::view,
 };
 
@@ -184,12 +223,23 @@ async fn user_profile() -> Result {
     view! { <h1>"User profile"</h1> }
 }
 
+#[derive(Deserialize, Serialize)]
+struct CreateUser {
+    name: String,
+}
+
+#[route(POST "/api/users")]
+async fn create_user(Json(input): Json<CreateUser>) -> Result<Json<CreateUser>> {
+    Ok(Json(input))
+}
+
 pub fn router() -> Router {
     Router::new()
         .layout(root_layout)
         .page(home)
         .page(users_list)
         .page(user_profile)
+        .route(create_user)
 }
 ```
 
@@ -203,4 +253,4 @@ pub fn router() -> Router {
 }
 ```
 
-All `#[page]` and `#[layout]` items from the example above (and any other module in the crate) are picked up automatically.
+All `#[page]`, `#[layout]`, and `#[route]` items from the example above (and any other module in the crate) are picked up automatically.
