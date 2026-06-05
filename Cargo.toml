@@ -16,6 +16,7 @@ members = [
     "examples/hello-world",
     "examples/manual-router",
     "examples/module-router",
+    "examples/request-response",
     "examples/tailwind",
 ]
 

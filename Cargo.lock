@@ -1368,6 +1368,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "request-response"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "serde",
+ "serde_json",
+ "tokio",
+ "topcoat",
+]
+
+[[package]]
 name = "reqwest"
 version = "0.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
