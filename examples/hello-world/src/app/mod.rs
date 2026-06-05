@@ -11,7 +11,7 @@ use topcoat::{
     router::{Slot, layout, page},
     runtime::{ReadSignal, Shard},
     tailwind,
-    view::{attributes, component, shard, view},
+    view::{component, shard, view},
 };
 
 use crate::components::app_and_request_state;
