@@ -2,6 +2,13 @@ import { setupBinding } from "./binding";
 import { type CommentMarker, parseComment } from "./comment";
 import { setupEventHandler } from "./event";
 import { ReactiveScope, type Scope } from "./scope";
+import { setupTextExpression } from "./text";
+
+type PendingTextExpression = {
+	start: Comment;
+	js: string;
+	scope: Scope;
+};
 
 /**
  * Walks the DOM region `(from, to)` under `root`, hydrating signals, reactive
@@ -26,6 +33,7 @@ export function scan(
 	if (from) walker.currentNode = from;
 
 	const stack: Scope[] = [initialScope];
+	const textExpressions: PendingTextExpression[] = [];
 
 	for (let node = walker.nextNode(); node; node = walker.nextNode()) {
 		if (to && node === to) break;
@@ -41,7 +49,7 @@ export function scan(
 		const marker = parseComment(node as Comment);
 		if (!marker) continue;
 
-		processMarker(marker, node as Comment, stack);
+		processMarker(marker, node as Comment, stack, textExpressions);
 	}
 }
 
@@ -56,6 +64,7 @@ function processMarker(
 	marker: CommentMarker,
 	node: Comment,
 	stack: Scope[],
+	textExpressions: PendingTextExpression[],
 ): void {
 	const current = stack[stack.length - 1];
 
@@ -64,6 +73,24 @@ function processMarker(
 			if (current.runtime.registry.insert(marker.id, marker.value)) {
 				current.signalIds.add(marker.id);
 			}
+			break;
+		}
+
+		case "expr-start": {
+			textExpressions.push({
+				start: node,
+				js: marker.js,
+				scope: current,
+			});
+			break;
+		}
+
+		case "expr-end": {
+			const pending = textExpressions.pop();
+			if (!pending) {
+				throw new Error("Unbalanced text expression: end marker has no start");
+			}
+			setupTextExpression(pending.start, node, pending.js, pending.scope);
 			break;
 		}
 

@@ -1,9 +1,9 @@
 use std::{borrow::Cow, collections::HashMap, pin::Pin};
 
 use http::Method;
-use topcoat_core::context::Cx;
+use topcoat_core::{context::Cx, error::Result};
 
-use crate::{Body, Path, Response, Result};
+use crate::{Body, Path, Response};
 
 /// The async handler function backing a [`Route`].
 pub type RouteHandlerFn =
@@ -105,7 +105,7 @@ mod tests {
         _cx: &Cx,
         _body: Body,
     ) -> Pin<Box<dyn Future<Output = Result<Response>> + Send>> {
-        Box::pin(async { Ok((StatusCode::OK).into_response()) })
+        Box::pin(async { (StatusCode::OK).into_response() })
     }
 
     fn route(path: &'static str) -> Route {

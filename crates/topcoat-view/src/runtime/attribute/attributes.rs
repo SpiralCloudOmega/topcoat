@@ -14,6 +14,13 @@ impl Attributes {
     }
 
     #[inline]
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            map: HashMap::with_capacity(capacity),
+        }
+    }
+
+    #[inline]
     pub fn contains_key(&self, k: impl AsRef<str>) -> bool {
         self.map.contains_key(k.as_ref())
     }

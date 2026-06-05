@@ -77,6 +77,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "170433209e817da6aae2c51aa0dd443009a613425dd041ebfb2492d1c4c11a25"
 
 [[package]]
+name = "app-state"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "topcoat",
+]
+
+[[package]]
+name = "assets"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "topcoat",
+]
+
+[[package]]
 name = "atomic-waker"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -383,6 +399,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "cx"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "topcoat",
+]
+
+[[package]]
 name = "data-encoding"
 version = "2.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -638,12 +662,8 @@ checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 name = "hello-world"
 version = "0.1.0"
 dependencies = [
- "axum",
- "serde",
- "serde_json",
  "tokio",
  "topcoat",
- "uuid",
 ]
 
 [[package]]
@@ -1068,6 +1088,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "112b39cec0b298b6c1999fee3e31427f74f676e4cb9879ed1a121b43661a4154"
 
 [[package]]
+name = "manual-router"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "topcoat",
+]
+
+[[package]]
 name = "matchit"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1118,6 +1146,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-router"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "topcoat",
+]
+
+[[package]]
 name = "notify"
 version = "8.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1161,6 +1197,14 @@ name = "openssl-probe"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c87def4c32ab89d880effc9e097653c8da5d6ef28e6b539d313baaacfbafcbe"
+
+[[package]]
+name = "path-query-params"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "topcoat",
+]
 
 [[package]]
 name = "percent-encoding"
@@ -1341,6 +1385,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "request-response"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "serde",
+ "serde_json",
+ "tokio",
+ "topcoat",
 ]
 
 [[package]]
@@ -1750,6 +1805,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "tailwind"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "topcoat",
+]
+
+[[package]]
 name = "thiserror"
 version = "2.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2006,11 +2069,14 @@ name = "topcoat-router"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "form_urlencoded",
  "heck",
  "http",
  "inventory",
  "ref-cast",
  "serde",
+ "serde_json",
+ "serde_path_to_error",
  "serde_urlencoded",
  "thiserror",
  "tokio",

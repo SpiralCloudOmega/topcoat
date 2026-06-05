@@ -19,6 +19,8 @@ async fn get_user(cx: &Cx, id: i64) -> User {
 
 That's it. Calling `get_user(cx, 42).await` from anywhere in the request — a page, a layout, a component — runs the body the first time and returns the cached `User` for every subsequent call with `id == 42`. The function's return type `T` is rewritten to `&T` that has the same lifetime as `&cx`.
 
+Top-level `Option<T>` and `Result<T, E>` return types are borrowed ergonomically: the macro calls `.as_ref()` on the cached value and returns `Option<&T>` or `Result<&T, &E>` instead of `&Option<T>` or `&Result<T, E>`.
+
 ## Sync and async
 
 `#[memoize]` works on both synchronous and `async` functions. Pick whichever matches your work; the macro handles the rest.
@@ -65,8 +67,8 @@ async fn lookup(cx: &Cx, name: &str) -> Result<Record, Error> {
     db::find(name).await
 }
 
-lookup(cx, "alice").await; // computes; stores "alice".to_owned() as the key
-lookup(cx, "alice").await; // cache hit, no allocation
+let record = lookup(cx, "alice").await?; // computes; stores "alice".to_owned() as the key
+let record = lookup(cx, "alice").await?; // cache hit, no allocation
 ```
 
 ## Requirements
@@ -110,7 +112,7 @@ async fn root(cx: &Cx, slot: Slot<'_>) -> Result {
     let user = current_user(cx).await; // computes once
     view! {
         <header>
-            (match &*user {
+            (match user {
                 Some(u) => view! { "Hello, " (u.name.clone()) },
                 None => view! { <a href="/login">"Sign in"</a> },
             })
@@ -122,7 +124,7 @@ async fn root(cx: &Cx, slot: Slot<'_>) -> Result {
 #[page]
 async fn dashboard(cx: &Cx) -> Result {
     let user = current_user(cx).await; // cache hit, no extra DB query
-    view! { <h1>"Welcome, " (user.as_ref().unwrap().name.clone())</h1> }
+    view! { <h1>"Welcome, " (user.unwrap().name.clone())</h1> }
 }
 ```
 

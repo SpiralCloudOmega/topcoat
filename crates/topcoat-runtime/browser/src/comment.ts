@@ -5,6 +5,8 @@ export type ReactiveScopeId = string;
 
 export type CommentMarker =
 	| { kind: "signal"; id: SignalId; value: unknown }
+	| { kind: "expr-start"; js: string }
+	| { kind: "expr-end" }
 	| {
 			kind: "scope-start";
 			id: ReactiveScopeId;
@@ -13,7 +15,9 @@ export type CommentMarker =
 	  }
 	| { kind: "scope-end"; id: ReactiveScopeId };
 
-const SIGNAL_RE = /^\s*::topcoat::signal\("([^"]*)", (.*)\)\s*$/;
+const SIGNAL_RE = /^\s*::topcoat::signal\("([^"]*)", "([^"]*)"\)\s*$/;
+const EXPR_START_RE = /^\s*::topcoat::expr::start\("([^"]*)"\)\s*$/;
+const EXPR_END_RE = /^\s*::topcoat::expr::end\s*$/;
 const SCOPE_START_RE =
 	/^\s*::topcoat::scope::start\(("[^"]+"), (\[[^\]]*\]), ("[^"]*")\)\s*$/;
 const SCOPE_END_RE = /^\s*::topcoat::scope::end\(("[^"]+")\)\s*$/;
@@ -24,8 +28,9 @@ export function parseComment(node: Comment): CommentMarker | null {
 	const sig = SIGNAL_RE.exec(text);
 	if (sig) {
 		const id = sig[1];
-		const valueExpr = JSON.parse(sig[2]);
-		const value = new Function("cx", `return ${valueExpr}`)(
+		const valueExpr = new DOMParser().parseFromString(sig[2], "text/html")
+			.documentElement.textContent;
+		const value = new Function("cx", `return ${valueExpr};`)(
 			new Context(new SignalRegistry()),
 		);
 		return {
@@ -33,6 +38,21 @@ export function parseComment(node: Comment): CommentMarker | null {
 			id,
 			value,
 		};
+	}
+
+	const exprStart = EXPR_START_RE.exec(text);
+	if (exprStart) {
+		const js = new DOMParser().parseFromString(exprStart[1], "text/html")
+			.documentElement.textContent;
+		if (js === null) throw new Error("Failed to decode expression marker");
+		return {
+			kind: "expr-start",
+			js,
+		};
+	}
+
+	if (EXPR_END_RE.test(text)) {
+		return { kind: "expr-end" };
 	}
 
 	const start = SCOPE_START_RE.exec(text);

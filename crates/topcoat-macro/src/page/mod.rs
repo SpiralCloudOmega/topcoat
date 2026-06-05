@@ -1,10 +1,12 @@
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
 use syn::{
-    FnArg, Ident, ItemFn, LitStr, Pat,
+    ItemFn, LitStr,
     parse::{Parse, ParseStream},
     parse_quote,
 };
+
+use crate::handler_args::{HandlerArgs, request_ident};
 
 pub struct PageAttr {
     path: Option<LitStr>,
@@ -20,34 +22,13 @@ impl Parse for PageAttr {
 
 pub struct PageItem {
     item: ItemFn,
-    args: Vec<Ident>,
+    args: HandlerArgs,
 }
 
 impl Parse for PageItem {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let item: ItemFn = input.parse()?;
-        let mut args = Vec::new();
-        for arg in &item.sig.inputs {
-            match arg {
-                FnArg::Receiver(r) => {
-                    return Err(syn::Error::new_spanned(
-                        r,
-                        "page functions cannot take a `self` receiver",
-                    ));
-                }
-                FnArg::Typed(pat_type) => match &*pat_type.pat {
-                    Pat::Ident(pi) => {
-                        args.push(pi.ident.clone());
-                    }
-                    _ => {
-                        return Err(syn::Error::new_spanned(
-                            pat_type,
-                            "page functions only accept an optional `cx: &Cx` parameter",
-                        ));
-                    }
-                },
-            }
-        }
+        let args = HandlerArgs::parse(&item, "page")?;
         Ok(Self { item, args })
     }
 }
@@ -73,12 +54,22 @@ impl ToTokens for Page {
             .inputs
             .insert(0, parse_quote! { __cx: &'__cx ::topcoat::context::Cx });
         let ident = &item.sig.ident;
-        let args = &self.1.args;
+        let args = self.1.args.call_args();
+        let parse_request = self.1.args.request().map(|request| {
+            let request_ident = request_ident();
+            let request_ty = &request.ty;
+            quote! {
+                let #request_ident = <#request_ty as ::topcoat::router::FromRequest>::from_request(cx, body).await?;
+            }
+        });
 
         let render = quote! {
             |cx, body| {
                 #item
-                Box::pin(#ident(cx, #(#args),*))
+                Box::pin(async move {
+                    #parse_request
+                    #ident(cx, #(#args),*).await
+                })
             }
         };
 

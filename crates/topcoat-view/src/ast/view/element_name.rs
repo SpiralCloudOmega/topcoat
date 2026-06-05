@@ -9,7 +9,10 @@ use syn::{
     token::Paren,
 };
 
-use crate::ast::view::{ExprKind, HtmlIdent, TemplateExpr, ViewWriter, WriteView};
+use crate::ast::{
+    template::TemplateExpr,
+    view::{ExprKind, HtmlIdent, ViewWriter, WriteView},
+};
 
 /// The name appearing in an [`Element`](super::Element)'s tag. May be an HTML
 /// identifier (`div`, `data-foo`, `xmlns:xlink`), a string literal

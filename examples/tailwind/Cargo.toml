@@ -1,0 +1,14 @@
+[package]
+name = "tailwind"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+topcoat = { workspace = true, features = ["tailwind"] }
+
+[build-dependencies]
+topcoat = { workspace = true, features = ["tailwind"] }
+
+[lints]
+workspace = true

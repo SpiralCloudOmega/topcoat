@@ -1,8 +1,8 @@
 # Router
 
-`topcoat::router::Router` is the core routing primitive. It collects pages and layouts, matches layouts to pages by path prefix, and converts into an `axum::Router` for serving.
+`topcoat::router::Router` is the core routing primitive. It collects pages, layouts, and API routes, matches layouts to pages by path prefix, and converts into an `axum::Router` for serving.
 
-You can register pages and layouts in two ways: **manually** (explicit paths, full control) or with **auto-discovery** (the `discover` feature collects annotated items automatically). The [module router](./module_router.md) builds on top of both — this document covers using `Router` directly.
+You can register pages, layouts, and routes in two ways: **manually** (explicit paths, full control) or with **auto-discovery** (the `discover` feature collects annotated items automatically). The [module router](./module_router.md) builds on top of both — this document covers using `Router` directly.
 
 ## Pages
 
@@ -94,9 +94,22 @@ async fn profile() -> Result {
 
 A request to `/settings/profile` renders: `root_layout` > `settings_layout` > `profile`.
 
+## API routes
+
+An API route is an async function annotated with `#[route]` and an explicit HTTP method and path:
+
+```rust
+#[route(GET "/api/health")]
+async fn health() -> Result<&'static str> {
+    Ok("ok")
+}
+```
+
+Route functions can also read request bodies and return structured responses. That works the same way for explicit router paths and module-router paths; see [Request and response bodies](./request_response.md).
+
 ## Manual registration
 
-Build a router by chaining `.page()` and `.layout()`:
+Build a router by chaining `.page()`, `.layout()`, and `.route()`:
 
 ```rust
 use topcoat::router::Router;
@@ -108,6 +121,7 @@ pub fn router() -> Router {
         .page(home)
         .page(about)
         .page(profile)
+        .route(health)
 }
 ```
 
@@ -115,7 +129,7 @@ Order doesn't matter — layout-to-page matching is based on path prefixes, not 
 
 ## Auto-discovery with `discover()`
 
-With the `discover` feature enabled, every `#[page]` and `#[layout]` is automatically collected at link time. Instead of listing each item by hand, call `.discover()`:
+With the `discover` feature enabled, every `#[page]`, `#[layout]`, and `#[route]` is automatically collected at link time. Instead of listing each item by hand, call `.discover()`:
 
 ```rust
 pub fn router() -> Router {
@@ -149,7 +163,7 @@ let axum_router: axum::Router = router.into();
 ```rust
 use topcoat::{
     Result,
-    router::{Router, Slot, layout, page},
+    router::{Router, Slot, layout, page, route},
     view::view,
 };
 
@@ -184,12 +198,18 @@ async fn user_profile() -> Result {
     view! { <h1>"User profile"</h1> }
 }
 
+#[route(GET "/api/health")]
+async fn health() -> Result<&'static str> {
+    Ok("ok")
+}
+
 pub fn router() -> Router {
     Router::new()
         .layout(root_layout)
         .page(home)
         .page(users_list)
         .page(user_profile)
+        .route(health)
 }
 ```
 
@@ -203,4 +223,4 @@ pub fn router() -> Router {
 }
 ```
 
-All `#[page]` and `#[layout]` items from the example above (and any other module in the crate) are picked up automatically.
+All `#[page]`, `#[layout]`, and `#[route]` items from the example above (and any other module in the crate) are picked up automatically.

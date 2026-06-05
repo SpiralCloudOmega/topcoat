@@ -40,7 +40,7 @@ struct PostId(uuid::Uuid);
 
 #[page]
 async fn post_page(cx: &Cx) -> Result {
-    let post_id = PostId::of(cx).as_ref().ok_or_redirect("/invalid-id")?;
+    let post_id = PostId::of(cx).ok_or_redirect("/invalid-id")?;
     view! { "showing post with id: " (post_id.to_string()) }
 }
 ```
@@ -53,7 +53,7 @@ struct PostId(uuid::Uuid);
 
 #[page("/posts/{post_id}")]
 async fn post_page(cx: &Cx) -> Result {
-    let post_id = PostId::of(cx).as_ref().ok_or_redirect("/invalid-id")?;
+    let post_id = PostId::of(cx).ok_or_redirect("/invalid-id")?;
     view! { "showing post with id: " (post_id.to_string()) }
 }
 ```
@@ -65,7 +65,7 @@ The `segment!` emitted by the macro is inert here — it only matters under the 
 The return type depends on the inner field's type:
 
 - **Inner type is `&str`** — `of(cx)` returns `&Self` directly with the borrowed segment value. No parsing, no `Result`.
-- **Any other inner type** — `of(cx)` returns `&Result<Self, <T as FromStr>::Err>`, parsed via `FromStr`. Use `.as_ref()` to inspect the result.
+- **Any other inner type** — `of(cx)` returns `Result<&Self, &<T as FromStr>::Err>`, parsed via `FromStr`.
 
 ```rust
 // Borrowed inner type — no parsing.
@@ -101,7 +101,7 @@ struct PageQuery {
 #[page]
 async fn posts(cx: &Cx) -> Result {
     // For `/posts?page=2`, this yields `Some(2)`.
-    let q = PageQuery::of(cx).as_ref().unwrap();
+    let q = PageQuery::of(cx).unwrap();
     view! {
         <div>
             "currently on page: " (q.page)
@@ -110,7 +110,7 @@ async fn posts(cx: &Cx) -> Result {
 }
 ```
 
-`of` returns `&Result<Self, serde_urlencoded::de::Error>`, parsed once per request and shared across calls.
+`of` returns `Result<&Self, &serde_urlencoded::de::Error>`, parsed once per request and shared across calls.
 
 The struct isn't tied to any particular route — define it once, read it from any page, layout, or component that has access to a `Cx`.
 

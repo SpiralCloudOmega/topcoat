@@ -13,7 +13,7 @@ pub fn router() -> topcoat::router::Router {
 }
 ```
 
-Every `#[page]` and `#[layout]` in modules under `app` is automatically discovered and registered.
+Every `#[page]`, `#[layout]`, and `#[route]` in modules under `app` is automatically discovered and registered.
 
 ## How modules map to routes
 
@@ -27,7 +27,7 @@ Each module's path relative to the root module determines its URL. Module names 
 | `app::settings` | `/settings` |
 | `app::settings::profile` | `/settings/profile` |
 
-## Pages and layouts
+## Pages, layouts, and API routes
 
 A `#[page]` defines a route handler. A `#[layout]` wraps all pages in the same module and its submodules.
 
@@ -51,6 +51,39 @@ async fn home() -> Result {
 #[page]
 async fn about() -> Result {
     view! { <h1>"About"</h1> }
+}
+```
+
+API routes use `#[route]` with an explicit HTTP method. Like pages and layouts, method-only routes derive their URL from the module path:
+
+```rust
+// src/app/api/health.rs — GET /api/health
+#[route(GET)]
+async fn health() -> Result<&'static str> {
+    Ok("ok")
+}
+```
+
+Pages and routes can also read request bodies, and routes can return structured responses. See [Request and response bodies](./request_response.md).
+
+## Path overrides
+
+Module-derived paths and explicit paths can be mixed in the same route tree. `#[page]`, `#[layout]`, and `#[route]` all register into the same router in the end. If an attribute includes an explicit path, that path is used instead of the module-derived path for that item:
+
+```rust
+#[page("/")]
+async fn home() -> Result {
+    view! { <h1>"Home"</h1> }
+}
+
+#[layout("/admin")]
+async fn admin_layout(slot: Slot<'_>) -> Result {
+    view! { <main>(slot.await?)</main> }
+}
+
+#[route(GET "/api/health")]
+async fn health() -> Result<&'static str> {
+    Ok("ok")
 }
 ```
 

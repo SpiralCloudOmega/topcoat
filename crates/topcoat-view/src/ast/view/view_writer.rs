@@ -66,6 +66,11 @@ impl ViewWriter {
         });
     }
 
+    pub fn statement(&mut self, tokens: TokenStream) {
+        self.flush();
+        self.chunks.push(Chunk::Statement { tokens });
+    }
+
     pub fn for_loop(&mut self, pat: &Pat, expr: &Expr, f: impl FnOnce(&mut ViewWriter)) {
         self.flush();
         let mut body = ViewWriter::new();
@@ -116,10 +121,13 @@ impl ViewWriter {
                         match chunk {
                             Chunk::Expr { kind, tokens } => {
                                 let helper = kind.helper();
-                                quote! { #helper(&mut __v, #tokens); }
+                                quote! { #helper(&mut __parts, #tokens); }
                             }
                             Chunk::Let { pat, expr } => {
                                 quote! { let #pat = #expr; }
+                            }
+                            Chunk::Statement { tokens } => {
+                                quote! { #tokens }
                             }
                             Chunk::If {
                                 expr,
@@ -170,9 +178,9 @@ impl ViewWriter {
 
                 quote! {{
                     use ::topcoat::view::internal::*;
-                    let mut __v = ::topcoat::view::ViewParts::new();
+                    let mut __parts = ::topcoat::view::ViewParts::new();
                     #statements
-                    ::topcoat::view::View::new(__v)
+                    ::topcoat::view::View::new(__parts)
                 }}
             }
         };
@@ -224,6 +232,9 @@ enum Chunk {
     Let {
         pat: Pat,
         expr: Box<Expr>,
+    },
+    Statement {
+        tokens: TokenStream,
     },
     For {
         pat: Pat,

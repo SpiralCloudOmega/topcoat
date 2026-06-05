@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::{ToTokens, format_ident, quote};
 use syn::{
-    FnArg, ItemFn, Pat, ReturnType,
+    FnArg, ItemFn, Pat, ReturnType, Type,
     parse::{Parse, ParseStream},
     parse_quote,
 };
@@ -118,9 +118,26 @@ impl ToTokens for Memoize {
             key_idents.push(ident);
         }
 
-        let return_type = match &sig.output {
-            ReturnType::Default => quote! { () },
-            ReturnType::Type(_, ty) => quote! { #ty },
+        fn is_option_or_result(ty: &Type) -> bool {
+            let Type::Path(path) = ty else {
+                return false;
+            };
+            path.path
+                .segments
+                .last()
+                .is_some_and(|segment| segment.ident == "Option" || segment.ident == "Result")
+        }
+
+        let return_ty = match &sig.output {
+            ReturnType::Default => parse_quote! { () },
+            ReturnType::Type(_, ty) => (**ty).clone(),
+        };
+        let return_type = quote! { #return_ty };
+        let return_type_as_ref = is_option_or_result(&return_ty);
+        let output_type = if return_type_as_ref {
+            quote! { <&'__cx #return_type as ::topcoat::internal::MemoizeAsRef>::AsRef }
+        } else {
+            quote! { &'__cx #return_type }
         };
 
         let call = if asyncness.is_some() {
@@ -149,12 +166,18 @@ impl ToTokens for Memoize {
             }
         };
 
+        let output = if return_type_as_ref {
+            quote! { (#call).as_ref() }
+        } else {
+            call
+        };
+
         quote! {
             #(#attrs)*
-            #vis #asyncness fn #ident #generics (#(#new_inputs,)*) -> &'__cx #return_type
+            #vis #asyncness fn #ident #generics (#(#new_inputs,)*) -> #output_type
             #where_clause
             {
-                #call
+                #output
             }
         }
         .to_tokens(tokens);

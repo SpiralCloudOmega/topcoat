@@ -1,18 +1,21 @@
 use std::{borrow::Cow, collections::HashMap, pin::Pin};
 
-use topcoat_core::context::Cx;
+use topcoat_core::{context::Cx, error::Result};
+use topcoat_view::runtime::View;
 
-use crate::{Path, Result};
+use crate::Path;
 
 /// The async render function backing a [`Layout`], receiving a [`Slot`] for child content.
-pub type LayoutRenderFn =
-    for<'cx> fn(cx: &'cx Cx, slot: Slot<'cx>) -> Pin<Box<dyn Future<Output = Result> + Send + 'cx>>;
+pub type LayoutRenderFn = for<'cx> fn(
+    cx: &'cx Cx,
+    slot: Slot<'cx>,
+) -> Pin<Box<dyn Future<Output = Result<View>> + Send + 'cx>>;
 
 /// A future that resolves to the inner page (or nested layout) [`Result`].
 ///
 /// Every layout render function receives a `Slot` and `.await`s it to embed
 /// the child content at the desired location.
-pub type Slot<'cx> = Pin<Box<dyn Future<Output = Result> + Send + 'cx>>;
+pub type Slot<'cx> = Pin<Box<dyn Future<Output = Result<View>> + Send + 'cx>>;
 
 /// A layout that wraps pages whose path starts with the layout's path prefix.
 ///
@@ -43,7 +46,7 @@ impl Layout {
         &self,
         cx: &'cx Cx,
         slot: Slot<'cx>,
-    ) -> Pin<Box<dyn Future<Output = Result> + Send + 'cx>> {
+    ) -> Pin<Box<dyn Future<Output = Result<View>> + Send + 'cx>> {
         (self.render)(cx, slot)
     }
 }
@@ -91,7 +94,7 @@ mod tests {
     fn dummy_render<'cx>(
         _cx: &'cx Cx,
         slot: Slot<'cx>,
-    ) -> Pin<Box<dyn Future<Output = Result> + Send + 'cx>> {
+    ) -> Pin<Box<dyn Future<Output = Result<View>> + Send + 'cx>> {
         Box::pin(slot)
     }
 

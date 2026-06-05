@@ -3,10 +3,7 @@ use syn::{
     parse::{Parse, ParseStream},
 };
 
-use crate::ast::{
-    ParseOption,
-    view::{Attributes, ElementName},
-};
+use crate::ast::{ParseOption, attributes::Attributes, view::ElementName};
 
 /// An element's opening tag: `<name attr=value ...>`.
 pub struct OpeningTag {
@@ -35,6 +32,8 @@ impl topcoat_pretty::PrettyPrint for OpeningTag {
         self.name.pretty_print(printer);
         if !self.attributes.is_empty() {
             printer.scan_indent(1);
+            printer.scan_break();
+            " ".pretty_print(printer);
             self.attributes.pretty_print(printer);
             printer.scan_indent(-1);
             printer.scan_break();

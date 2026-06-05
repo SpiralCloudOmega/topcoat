@@ -2,6 +2,8 @@ mod memoize;
 mod quote_option;
 
 #[cfg(feature = "router")]
+mod handler_args;
+#[cfg(feature = "router")]
 mod layout;
 #[cfg(feature = "router")]
 mod page;
@@ -31,6 +33,13 @@ pub fn expr(tokens: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn view(tokens: TokenStream) -> TokenStream {
     let parsed = syn::parse_macro_input!(tokens as topcoat_view::ast::view::View);
+    quote! { #parsed }.into()
+}
+
+#[cfg(feature = "view")]
+#[proc_macro]
+pub fn attributes(tokens: TokenStream) -> TokenStream {
+    let parsed = syn::parse_macro_input!(tokens as topcoat_view::ast::attributes::Attributes);
     quote! { #parsed }.into()
 }
 
@@ -116,7 +125,7 @@ pub fn segment(tokens: TokenStream) -> TokenStream {
 /// type depends on the inner type:
 ///
 /// - **`&str`** — returns `&Self` directly with the borrowed segment value.
-/// - **Any other type** — returns `&Result<Self, <T as FromStr>::Err>`,
+/// - **Any other type** — returns `Result<&Self, &<T as FromStr>::Err>`,
 ///   parsed via [`FromStr`](core::str::FromStr). Parsing is memoized per
 ///   request, so repeated calls within a handler do not re-parse.
 ///
@@ -130,7 +139,8 @@ pub fn segment(tokens: TokenStream) -> TokenStream {
 /// // src/app/posts/id/mod.rs — the `id` module becomes `{post_id}` in the URL.
 /// use topcoat::{
 ///     context::Cx,
-///     router::{FallbackExt, Result, page, path_param},
+///     Result,
+///     router::{RouterErrorExt, page, path_param},
 ///     view::view,
 /// };
 ///
@@ -139,7 +149,7 @@ pub fn segment(tokens: TokenStream) -> TokenStream {
 ///
 /// #[page]
 /// async fn post_page(cx: &Cx) -> Result {
-///     let post_id = PostId::of(cx).as_ref().ok_or_redirect("/invalid-id")?;
+///     let post_id = PostId::of(cx).ok_or_redirect("/invalid-id")?;
 ///     view! { "showing post with id: " (post_id.to_string()) }
 /// }
 /// ```
@@ -153,7 +163,7 @@ pub fn segment(tokens: TokenStream) -> TokenStream {
 ///
 /// #[page("/posts/{post_id}")]
 /// async fn post_page(cx: &Cx) -> Result {
-///     let post_id = PostId::of(cx).as_ref().ok_or_redirect("/invalid-id")?;
+///     let post_id = PostId::of(cx).ok_or_redirect("/invalid-id")?;
 ///     view! { "showing post with id: " (post_id.to_string()) }
 /// }
 /// ```
@@ -196,7 +206,7 @@ pub fn path_param(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// `cx` belongs to, using [`serde_urlencoded`].
 ///
 /// The same struct can be used from any handler — it is not tied to a
-/// particular route. `of` returns `&Result<Self, serde_urlencoded::de::Error>`,
+/// particular route. `of` returns `Result<&Self, &serde_urlencoded::de::Error>`,
 /// and parsing is memoized per request so repeated calls within one handler
 /// share the same parse result.
 ///
@@ -205,7 +215,8 @@ pub fn path_param(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// ```ignore
 /// use topcoat::{
 ///     context::Cx,
-///     router::{Result, page, query_params},
+///     Result,
+///     router::{page, query_params},
 ///     view::view,
 /// };
 ///
@@ -217,7 +228,7 @@ pub fn path_param(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// #[page]
 /// async fn posts(cx: &Cx) -> Result {
 ///     // For `/posts?page=2`, this yields `Some(2)`.
-///     let q = PageQuery::of(cx).as_ref().unwrap();
+///     let q = PageQuery::of(cx).unwrap();
 ///     view! {
 ///         <div>
 ///             "currently on page: " (q.page)
@@ -250,6 +261,8 @@ pub fn query_params(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// return the cached value without re-running the body.
 ///
 /// The function's return type `T` is rewritten to `&T` that has the same lifetime as `&cx`.
+/// Top-level `Option<T>` and `Result<T, E>` return types instead become `Option<&T>` and
+/// `Result<&T, &E>`, matching the standard `.as_ref()` borrowing shape.
 ///
 /// # Sync and async
 ///

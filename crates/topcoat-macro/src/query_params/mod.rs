@@ -48,7 +48,9 @@ impl ToTokens for QueryParams {
             #item
 
             impl #ident {
-                fn of(cx: &::topcoat::context::Cx) -> &::core::result::Result<Self, ::topcoat::internal::serde_urlencoded::de::Error> {
+                fn of<'__cx>(
+                    cx: &'__cx ::topcoat::context::Cx,
+                ) -> ::core::result::Result<&'__cx Self, &'__cx ::topcoat::internal::serde_urlencoded::de::Error> {
                     #[::topcoat::context::memoize]
                     fn parse(cx: &::topcoat::context::Cx) -> ::core::result::Result<#ident, ::topcoat::internal::serde_urlencoded::de::Error> {
                         ::topcoat::internal::serde_urlencoded::from_str(

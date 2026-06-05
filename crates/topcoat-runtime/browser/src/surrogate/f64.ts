@@ -17,6 +17,10 @@ export class F64 {
 		return new F64(this.v / other.v);
 	}
 
+	clone(): F64 {
+		return new F64(this.v);
+	}
+
 	toJSON(): number {
 		return this.v;
 	}

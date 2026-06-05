@@ -6,10 +6,13 @@ use syn::{
 
 use crate::ast::{
     ParseOption,
+    template::{
+        RuntimeExpr, TemplateBlock, TemplateBreak, TemplateContinue, TemplateExpr, TemplateForLoop,
+        TemplateIf, TemplateLet, TemplateMatch,
+    },
     view::{
-        Component, DocumentType, Element, Nodes, ReactiveScope, SignalDeclaration, TemplateBlock,
-        TemplateBreak, TemplateContinue, TemplateExpr, TemplateForLoop, TemplateIf, TemplateLet,
-        TemplateMatch, ViewWriter, WriteView,
+        Component, DocumentType, Element, Nodes, ReactiveScope, SignalDeclaration, ViewWriter,
+        WriteView,
     },
 };
 
@@ -21,6 +24,7 @@ pub enum Node {
     Element(Box<Element>),
     Component(Component),
     Expr(TemplateExpr),
+    RuntimeExpr(RuntimeExpr),
     If(TemplateIf<Nodes>),
     Let(TemplateLet),
     ForLoop(TemplateForLoop<Nodes>),
@@ -50,6 +54,7 @@ impl WriteView for Node {
             Self::Element(inner) => inner.write(writer),
             Self::Component(inner) => inner.write(writer),
             Self::Expr(inner) => inner.write(writer),
+            Self::RuntimeExpr(inner) => inner.write(writer),
             Self::If(inner) => inner.write(writer),
             Self::Let(inner) => inner.write(writer),
             Self::ForLoop(inner) => inner.write(writer),
@@ -73,6 +78,8 @@ impl Parse for Node {
             Self::Element(input.parse()?)
         } else if TemplateExpr::peek(input) {
             Self::Expr(input.parse()?)
+        } else if RuntimeExpr::peek(input) {
+            Self::RuntimeExpr(input.parse()?)
         } else if TemplateIf::<Nodes>::peek(input) {
             Self::If(input.parse()?)
         } else if TemplateLet::peek(input) {
@@ -120,6 +127,7 @@ impl topcoat_pretty::PrettyPrint for Node {
             Self::Element(inner) => inner.pretty_print(printer),
             Self::Component(inner) => inner.pretty_print(printer),
             Self::Expr(inner) => inner.pretty_print(printer),
+            Self::RuntimeExpr(inner) => inner.pretty_print(printer),
             Self::If(inner) => inner.pretty_print(printer),
             Self::Let(inner) => inner.pretty_print(printer),
             Self::ForLoop(inner) => inner.pretty_print(printer),

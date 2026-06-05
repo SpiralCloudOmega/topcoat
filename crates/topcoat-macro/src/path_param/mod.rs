@@ -91,7 +91,9 @@ impl ToTokens for PathParam {
             }
         } else {
             quote! {
-                fn of(cx: &::topcoat::context::Cx) -> &::core::result::Result<#ident, <#inner_ty as ::core::str::FromStr>::Err> {
+                fn of<'__cx>(
+                    cx: &'__cx ::topcoat::context::Cx,
+                ) -> ::core::result::Result<&'__cx #ident, &'__cx <#inner_ty as ::core::str::FromStr>::Err> {
                     #[::topcoat::context::memoize]
                     fn parse(cx: &::topcoat::context::Cx) -> ::core::result::Result<#ident, <#inner_ty as ::core::str::FromStr>::Err> {
                         for (key, value) in ::topcoat::router::raw_path_params(cx) {

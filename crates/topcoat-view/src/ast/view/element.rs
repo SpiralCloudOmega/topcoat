@@ -9,10 +9,8 @@ use syn::{
 
 use crate::ast::{
     ParseOption,
-    view::{
-        Attributes, ClosingTag, ElementName, ExprKind, Node, Nodes, OpeningTag, ViewWriter,
-        WriteView,
-    },
+    attributes::Attributes,
+    view::{ClosingTag, ElementName, ExprKind, Node, Nodes, OpeningTag, ViewWriter, WriteView},
 };
 
 /// An HTML element. `Void` covers the HTML void elements (`<br>`, `<img>`, …)

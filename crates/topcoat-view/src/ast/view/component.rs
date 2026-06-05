@@ -1,4 +1,5 @@
-use quote::quote;
+use proc_macro2::TokenStream;
+use quote::{ToTokens, quote};
 use syn::{
     Expr, Ident, Path, Token, parenthesized,
     parse::{Parse, ParseStream},
@@ -7,6 +8,7 @@ use syn::{
 
 use crate::ast::{
     ParseOption,
+    template::RuntimeExpr,
     view::{ExprKind, Nodes, ViewWriter, WriteView},
 };
 
@@ -27,7 +29,41 @@ pub struct Component {
 pub struct NamedArg {
     pub ident: Ident,
     pub colon: Token![:],
-    pub value: Expr,
+    pub value: NamedArgValue,
+}
+
+pub enum NamedArgValue {
+    Expr(Expr),
+    Runtime(RuntimeExpr),
+}
+
+impl Parse for NamedArgValue {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        if RuntimeExpr::peek(input) {
+            Ok(Self::Runtime(input.parse()?))
+        } else {
+            Ok(Self::Expr(input.parse()?))
+        }
+    }
+}
+
+impl ToTokens for NamedArgValue {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        match self {
+            Self::Expr(inner) => inner.to_tokens(tokens),
+            Self::Runtime(inner) => inner.to_tokens(tokens),
+        }
+    }
+}
+
+#[cfg(feature = "pretty")]
+impl topcoat_pretty::PrettyPrint for NamedArgValue {
+    fn pretty_print(&self, printer: &mut topcoat_pretty::Printer<'_>) {
+        match self {
+            Self::Expr(inner) => inner.pretty_print(printer),
+            Self::Runtime(inner) => inner.pretty_print(printer),
+        }
+    }
 }
 
 impl WriteView for Component {
@@ -74,7 +110,7 @@ impl Parse for Component {
                 while !content.is_empty() && peek_named_arg(&content) {
                     let ident: Ident = content.parse()?;
                     let colon: Token![:] = content.parse()?;
-                    let value: Expr = content.parse()?;
+                    let value: NamedArgValue = content.parse()?;
                     named_args.push(NamedArg {
                         ident,
                         colon,
@@ -192,6 +228,16 @@ mod tests {
         assert_eq!(component.named_args.len(), 1);
         assert_eq!(component.named_args[0].ident.to_string(), "label");
         assert!(component.children.is_empty());
+    }
+
+    #[test]
+    fn parses_runtime_named_arg() {
+        let component = parse(r#"button(label: $(ok))"#);
+        assert_eq!(component.named_args.len(), 1);
+        assert!(matches!(
+            component.named_args[0].value,
+            NamedArgValue::Runtime(_),
+        ));
     }
 
     #[test]

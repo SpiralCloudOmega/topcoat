@@ -1,12 +1,15 @@
 use std::{borrow::Cow, collections::HashMap, pin::Pin};
 
-use topcoat_core::context::Cx;
+use topcoat_core::{context::Cx, error::Result};
+use topcoat_view::runtime::View;
 
-use crate::{Body, Path, Result};
+use crate::{Body, Path};
 
 /// The async render function backing a [`Page`].
-pub type PageRenderFn =
-    for<'cx> fn(cx: &'cx Cx, body: Body) -> Pin<Box<dyn Future<Output = Result> + Send + 'cx>>;
+pub type PageRenderFn = for<'cx> fn(
+    cx: &'cx Cx,
+    body: Body,
+) -> Pin<Box<dyn Future<Output = Result<View>> + Send + 'cx>>;
 
 /// A route handler that renders a [`View`] for a specific URL path.
 ///
@@ -37,7 +40,7 @@ impl Page {
         &self,
         cx: &'cx Cx,
         body: Body,
-    ) -> Pin<Box<dyn Future<Output = Result> + Send + 'cx>> {
+    ) -> Pin<Box<dyn Future<Output = Result<View>> + Send + 'cx>> {
         (self.render)(cx, body)
     }
 }
