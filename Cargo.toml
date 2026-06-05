@@ -15,6 +15,7 @@ members = [
     "examples/hello-world",
     "examples/manual-router",
     "examples/module-router",
+    "examples/tailwind",
 ]
 
 [workspace.lints.rust]

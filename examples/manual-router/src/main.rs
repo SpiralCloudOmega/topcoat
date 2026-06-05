@@ -15,7 +15,7 @@ async fn main() {
 // --- Router -----------------------------------------------------------------
 
 // Manual routing means every item has an explicit path and is registered here.
-// With the "discover" feature enabled, this could instead be:
+// With the "discover" feature enabled (default), this can instead be:
 //
 // fn router() -> Router {
 //     Router::new().discover()
