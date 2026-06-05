@@ -13,6 +13,7 @@ members = [
     "crates/topcoat-view",
 
     "examples/hello-world",
+    "examples/manual-router",
     "examples/module-router",
 ]
 
