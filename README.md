@@ -123,7 +123,7 @@ view! { <link rel="stylesheet" href=(tailwind::stylesheet!())> }
 
 - `topcoat dev` — rebuild, rebundle assets, restart the app on changes.
 - `topcoat fmt` — format the inside of `view!` so it reads cleanly next to `rustfmt`.
-- `topcoat asset bundle` — produce the asset bundle for release builds.
+- `topcoat asset` — produce the asset bundle for release builds.
 
 ## Learn Topcoat
 
