@@ -125,8 +125,8 @@
 //! let router = app::router().assets(AssetBundle::load_dir("dist/assets").unwrap());
 //! ```
 //!
-//! When `--out` is not in one of the auto-detected locations, use [`AssetBundle::load_dir`] to point
-//! at it explicitly.
+//! When `--out` is not in one of the auto-detected locations, use [`AssetBundle::load_dir`] to
+//! point at it explicitly.
 //!
 //! ## Path resolution
 //!
