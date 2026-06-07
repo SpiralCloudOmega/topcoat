@@ -1,14 +1,16 @@
+mod counter;
+
 use topcoat::{
     Result,
     asset::AssetBundle,
-    router::{Router, page},
+    router::{Slot, layout, module_router, page, redirect},
     view::view,
 };
 
 #[tokio::main]
 async fn main() {
     topcoat::start(
-        Router::new()
+        module_router!()
             .assets(AssetBundle::load().unwrap())
             .discover(),
     )
@@ -16,21 +18,22 @@ async fn main() {
     .unwrap();
 }
 
-#[page("/")]
+#[page]
 async fn home() -> Result {
-    let x = 6.0;
+    Err(redirect("/counter").into())
+}
+
+#[layout]
+async fn layout(slot: Slot<'_>) -> Result {
     view! {
         <!DOCTYPE html>
         <html>
             <head>
-                <title>"Hello world"</title>
                 <script type="module" src=(topcoat::runtime::SCRIPT)></script>
                 topcoat::dev::script()
             </head>
             <body>
-                <button @click=$(|_e| {
-                    raw!("console.log(${x})")
-                })>"press me"</button>
+                (slot.await?)
             </body>
         </html>
     }
