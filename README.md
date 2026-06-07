@@ -140,7 +140,7 @@ view! { <link rel="stylesheet" href=(tailwind::stylesheet!())> }
 - [Module-based routing](docs/module_router.md) — derive the route table from your module tree.
 
 **Working with requests**
-- [Request context (`Cx`)](docs/cx.md) — the value pages, layouts, and components read from.
+- [Request context (`Cx`)](docs/context.md) — the value pages, layouts, and components read from.
 - [App state](docs/app_state.md) — share long-lived values across requests, keyed by type.
 - [Path and query params](docs/path_and_query_params.md) — typed `T::of(cx)` accessors.
 - [Request and response bodies](docs/request_response.md) — JSON, forms, custom extractors and responses.
