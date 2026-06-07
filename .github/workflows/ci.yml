@@ -45,4 +45,5 @@ jobs:
       - run: rustup update stable && rustup default stable
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@cargo-hack
+      - run: cargo fetch --locked
       - run: cargo hack clippy --workspace --each-feature --no-dev-deps --offline -- -D warnings
