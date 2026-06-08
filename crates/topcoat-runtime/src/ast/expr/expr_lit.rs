@@ -11,11 +11,6 @@ impl Expr {
         js: &mut String,
     ) -> syn::Result<()> {
         match &lit.lit {
-            Lit::Int(inner) => {
-                quote! { ::topcoat::runtime::Surrogated::into_surrogate(#inner) }.to_tokens(rust);
-                let value: i32 = inner.base10_parse()?;
-                push_js_surrogate(js, &value.into_surrogate())?;
-            }
             Lit::Float(inner) => {
                 quote! { ::topcoat::runtime::Surrogated::into_surrogate(#inner) }.to_tokens(rust);
                 let value: f64 = inner.base10_parse()?;
@@ -23,13 +18,12 @@ impl Expr {
             }
             Lit::Bool(inner) => {
                 quote! { ::topcoat::runtime::Surrogated::into_surrogate(#inner) }.to_tokens(rust);
-                // let value = inner.value;
-                // todo
+                push_js_surrogate(js, &inner.value.into_surrogate())?;
             }
             Lit::Str(inner) => {
                 quote! { ::topcoat::runtime::Surrogated::into_surrogate(#inner) }.to_tokens(rust);
                 let value = inner.value();
-                push_js_surrogate(js, &value.into_surrogate())?;
+                push_js_surrogate(js, value.as_str().into_surrogate())?;
             }
             other => return Err(syn::Error::new_spanned(other, "unsupported literal type")),
         }

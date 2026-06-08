@@ -1,16 +1,20 @@
+mod _bool;
 mod _f64;
-mod _i32;
 mod _str;
 mod event;
+mod option;
+mod result;
 mod signal;
 mod string;
 
 use serde::{Deserialize, Serialize, de};
 
+pub use _bool::*;
 pub use _f64::*;
-pub use _i32::*;
 pub use _str::*;
 pub use event::*;
+pub use option::*;
+pub use result::*;
 pub use signal::*;
 pub use string::*;
 
@@ -130,7 +134,7 @@ pub(crate) fn serialize_tagged<T, S>(
     serializer: S,
     tag: &'static str,
     value: &T,
-) -> Result<S::Ok, S::Error>
+) -> ::core::result::Result<S::Ok, S::Error>
 where
     T: Serialize + ?Sized,
     S: serde::Serializer,
@@ -141,7 +145,7 @@ where
 pub(crate) fn deserialize_tagged<'de, T, D>(
     deserializer: D,
     expected: &'static str,
-) -> Result<T, D::Error>
+) -> ::core::result::Result<T, D::Error>
 where
     T: Deserialize<'de>,
     D: serde::Deserializer<'de>,

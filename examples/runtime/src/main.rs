@@ -1,4 +1,5 @@
 mod counter;
+mod show;
 
 use topcoat::{
     Result,
@@ -29,10 +30,19 @@ async fn layout(slot: Slot<'_>) -> Result {
         <!DOCTYPE html>
         <html>
             <head>
-                <script type="module" src=(topcoat::runtime::SCRIPT)></script>
                 topcoat::dev::script()
+                topcoat::runtime::script()
             </head>
             <body>
+                <nav>
+                    <a href="/counter">"counter"</a>
+                    " | "
+                    <a href="/show">"show"</a>
+                </nav>
+
+                <hr>
+                <br>
+
                 (slot.await?)
             </body>
         </html>

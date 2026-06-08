@@ -1,7 +1,8 @@
 use ref_cast::RefCast;
 
 use crate::runtime::{
-    deserialize_tagged, impl_surrogate, impl_surrogate_mut, impl_surrogate_ref, serialize_tagged,
+    Str, deserialize_tagged, impl_surrogate, impl_surrogate_mut, impl_surrogate_ref,
+    serialize_tagged,
 };
 
 #[derive(Debug, Clone, RefCast)]
@@ -40,5 +41,14 @@ impl<'de> serde::Deserialize<'de> for String {
 impl std::fmt::Display for String {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
+    }
+}
+
+impl std::ops::Deref for String {
+    type Target = Str;
+
+    #[inline]
+    fn deref(&self) -> &Str {
+        Str::ref_cast(self.0.as_str())
     }
 }

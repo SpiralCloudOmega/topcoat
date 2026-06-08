@@ -1,6 +1,8 @@
 import type { SignalId, SignalRegistry } from "./signal";
 import {
 	deserializeSurrogate,
+	Option,
+	Result,
 	type SerializedSurrogate,
 	WriteSignal,
 } from "./surrogate";
@@ -20,5 +22,21 @@ export class Context {
 
 	signal(id: SignalId): WriteSignal<unknown> {
 		return new WriteSignal(id, this.registry.handle(id));
+	}
+
+	some<T>(v: T): Option<T> {
+		return Option.some(v);
+	}
+
+	none<T>(): Option<T> {
+		return Option.none<T>();
+	}
+
+	ok<T, E = never>(v: T): Result<T, E> {
+		return Result.from_ok(v);
+	}
+
+	err<T = never, E = unknown>(v: E): Result<T, E> {
+		return Result.from_err(v);
 	}
 }

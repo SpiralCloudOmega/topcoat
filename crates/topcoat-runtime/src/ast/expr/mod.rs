@@ -2,8 +2,10 @@ mod block;
 mod builtin_macro;
 mod expr_binary;
 mod expr_block;
+mod expr_call;
 mod expr_closure;
 mod expr_field;
+mod expr_if;
 mod expr_index;
 mod expr_lit;
 mod expr_method_call;
@@ -110,10 +112,12 @@ impl Expr {
             syn::Expr::Binary(inner) => Self::expr_binary(inner, rust, js, names)?,
             syn::Expr::Unary(inner) => Self::expr_unary(inner, rust, js, names)?,
             syn::Expr::MethodCall(inner) => Self::expr_method_call(inner, rust, js, names)?,
+            syn::Expr::Call(inner) => Self::expr_call(inner, rust, js, names)?,
             syn::Expr::Field(inner) => Self::expr_field(inner, rust, js, names)?,
             syn::Expr::Index(inner) => Self::expr_index(inner, rust, js, names)?,
             syn::Expr::Block(inner) => Self::expr_block(inner, rust, js, names)?,
             syn::Expr::Closure(inner) => Self::expr_closure(inner, rust, js, names)?,
+            syn::Expr::If(inner) => Self::expr_if(inner, rust, js, names)?,
             syn::Expr::Path(inner) => Self::expr_path(inner, rust, js, names)?,
             syn::Expr::Macro(inner) => Self::expr_macro(inner, rust, js, names)?,
             other => return Err(syn::Error::new_spanned(other, "unsupported expression")),

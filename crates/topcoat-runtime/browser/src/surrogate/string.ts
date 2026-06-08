@@ -1,6 +1,10 @@
+import { Str } from "./str";
+
 // biome-ignore lint/suspicious/noShadowRestrictedNames: Surrogate type
-export class String {
-	constructor(private readonly v: string) {}
+export class String extends Str {
+	deref(): Str {
+		return this;
+	}
 
 	clone(): String {
 		return new String(this.v);
@@ -8,9 +12,5 @@ export class String {
 
 	toJSON(): { t: "String"; v: string } {
 		return { t: "String", v: this.v };
-	}
-
-	toString(): string {
-		return this.v.toString();
 	}
 }
