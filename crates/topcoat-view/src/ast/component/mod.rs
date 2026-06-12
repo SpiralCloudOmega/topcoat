@@ -92,7 +92,7 @@ impl ToTokens for Component {
                 impl_traits_visitor.count = 0;
                 impl_traits_visitor.visit_type_mut(&mut ty);
 
-                let attrs: Vec<&Attribute> = pat_type.attrs.iter().collect();
+                let attrs = &pat_type.attrs;
                 let field_ident = &pi.ident;
                 fields.push(quote! { #(#attrs)* #vis #field_ident: #ty });
                 args.push(quote! { props.#field_ident });
