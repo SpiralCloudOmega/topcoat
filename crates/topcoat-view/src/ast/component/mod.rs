@@ -63,6 +63,18 @@ impl ToTokens for Component {
             .inputs
             .insert(0, parse_quote! { __cx: &'__cx ::topcoat::context::Cx });
 
+        // The `#[default]` and `#[into]` helper attributes are only meaningful to
+        // the `Props` derive, which sees them on the generated struct's fields.
+        // They are not valid on the re-emitted function's parameters, so strip
+        // them here to avoid a "cannot find attribute" error.
+        for arg in &mut item.sig.inputs {
+            if let FnArg::Typed(pat_type) = arg {
+                pat_type
+                    .attrs
+                    .retain(|attr| !attr.path().is_ident("default") && !attr.path().is_ident("into"));
+            }
+        }
+
         let ReturnType::Type(_, return_ty) = &item.sig.output else {
             unreachable!("validated in Parse");
         };
