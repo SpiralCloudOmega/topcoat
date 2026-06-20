@@ -27,7 +27,7 @@ pub struct Cx {
     app_state: Arc<State>,
     request_state: State,
     cache: MemoizeCache,
-    abort: AbortStore,
+    abort_store: AbortStore,
 }
 
 impl Cx {
@@ -37,7 +37,7 @@ impl Cx {
             app_state,
             request_state,
             cache: MemoizeCache::new(),
-            abort: AbortStore::new(),
+            abort_store: AbortStore::new(),
         }
     }
 
@@ -55,6 +55,12 @@ impl Cx {
     #[doc(hidden)]
     pub fn cache(&self) -> &MemoizeCache {
         &self.cache
+    }
+
+    #[inline]
+    #[doc(hidden)]
+    pub fn abort_store(&self) -> &AbortStore {
+        &self.abort_store
     }
 }
 
