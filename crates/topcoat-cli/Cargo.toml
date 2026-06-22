@@ -15,11 +15,13 @@ path = "src/bin/cargo_topcoat.rs"
 [dependencies]
 topcoat-asset = { workspace = true, features = ["bundler"] }
 topcoat-pretty.workspace = true
+topcoat-ui.workspace = true
 topcoat-view = { workspace = true, features = ["pretty"] }
 
 axum = { workspace = true, features = ["ws"] }
 clap = { workspace = true, features = ["derive"] }
 console.workspace = true
+dialoguer.workspace = true
 futures-util.workspace = true
 glob.workspace = true
 indicatif.workspace = true
