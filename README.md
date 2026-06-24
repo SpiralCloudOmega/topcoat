@@ -4,8 +4,6 @@
 
 A batteries-included Rust web framework for server-rendered apps.
 
-Topcoat is a productive full-stack toolkit for server-rendered Rust apps: HTML-first templates, file-system-shaped routing, per-request memoization, and a built-in asset pipeline with optional Tailwind support — all designed so you can stay in Rust.
-
 See the [Getting started guide](https://github.com/tokio-rs/topcoat/blob/main/crates/topcoat/docs/getting_started.md) to set up a new project.
 
 ```rust,ignore
@@ -40,9 +38,9 @@ async fn hello(name: &str) -> Result {
 
 ## What makes Topcoat different
 
-### HTML that's still HTML
+### Powerful, unsurprising HTML templates
 
-The `view!` macro doesn't invent a Rust-shaped HTML dialect. Element names, attribute names, and void elements stay the way you'd write them in a `.html` file — `aria-label`, `hx-get`, `xmlns:xlink`, `<br>`, `<input>`, all of it. Control flow is just Rust:
+The `view!` macro stays true to HTML and Rust. Use familiar Rust control flow as part of your templates:
 
 ```rust,ignore
 view! {
@@ -58,18 +56,18 @@ view! {
 }
 ```
 
-Attributes that evaluate to `false` or `None` drop themselves from the rendered HTML. Components are called with familiar function-call syntax and can take trailing child nodes.
+Use the `topcoat fmt` CLI command to automatically format `view!` snippets across your codebase.
 
-### Your module tree is your route table
+### Module-based routing
 
-Drop `module_router!()` at the root of your `app` module and every `#[page]`, `#[layout]`, and `#[route]` below it gets registered automatically. Module names are kebab-cased into URL segments. Modules prefixed with `_` are *groups* — they hold shared layouts but don't add a segment.
+Topcoat can optionally infer your route tree from your app's module structure (without a build step):
 
 ```text
 src/app/
 ├── mod.rs              → /            (and the root <html> layout)
 ├── about.rs            → /about
 ├── _marketing/
-│   ├── mod.rs                         (layout, no segment)
+│   ├── mod.rs                         (layout, no URL segment)
 │   └── pricing.rs      → /pricing
 ├── posts/
 │   ├── mod.rs          → /posts
@@ -78,34 +76,6 @@ src/app/
 └── api/
     └── health.rs       → GET /api/health
 ```
-
-### Functions, not middleware
-
-Authentication, tenant lookup, feature flags, locale detection — anything request-scoped — is just a function that takes `&Cx`.
-
-```rust,ignore
-fn db(cx: &Cx) -> &Database {
-    app_context(cx)
-}
-
-#[memoize]
-async fn fetch_user(cx: &Cx, id: &str) -> Option<User> {
-    db(cx).load_user(id).await
-}
-
-async fn require_auth(cx: &Cx) -> Result<&User, UnauthorizedError> {
-    let id = session_cookie(cx).ok_or_unauthorized()?;
-    fetch_user(cx, id).await.ok_or_unauthorized()
-}
-
-#[component]
-async fn user_avatar(cx: &Cx) -> Result {
-    let user = require_auth(cx).await?;
-    view! { <img src=(user.avatar_url) alt=(format!("{}'s avatar", user.name))> }
-}
-```
-
-`#[memoize]` caches per request and keys on the arguments — so a layout reading the current user, a page checking authorization, and a deep component rendering an avatar all share one database hit. Concurrent callers even await the same in-flight future.
 
 ### Asset bundling
 
@@ -117,17 +87,13 @@ view! { <img src=(FERRIS)> }
 
 The bundler scans your compiled binary for `asset!` calls, copies (or downloads) every file, and serves them at `/_topcoat/assets/ferris-<hash>.png`. Remote assets can be pinned with a SHA-256 checksum.
 
-Tailwind is the same story without a `node_modules`: enable the `tailwind` feature, drop a `build.rs` one-liner, and the standalone Tailwind CLI's output becomes a normal Topcoat asset.
+### Built-in Tailwind support
+
+Enabled the `tailwind` feature to integrate Tailwind into your project effortlessly:
 
 ```rust,ignore
-view! { <link rel="stylesheet" href=(tailwind::stylesheet!())> }
+view! { <link rel="stylesheet" href=(topcoat::tailwind::stylesheet!())> }
 ```
-
-### The CLI
-
-- `topcoat dev` — rebuild, rebundle assets, restart the app on changes.
-- `topcoat fmt` — format the inside of `view!` so it reads cleanly next to `rustfmt`.
-- `topcoat asset` — produce the asset bundle for release builds.
 
 ## Learn Topcoat
 
@@ -147,10 +113,8 @@ view! { <link rel="stylesheet" href=(tailwind::stylesheet!())> }
 - [Request context (`Cx`)](https://github.com/tokio-rs/topcoat/blob/main/crates/topcoat/docs/context.md) — the value pages, layouts, and components read from.
 - [App context](https://github.com/tokio-rs/topcoat/blob/main/crates/topcoat/docs/app_context.md) — share long-lived values across requests, keyed by type.
 - [Cookies](https://github.com/tokio-rs/topcoat/blob/main/crates/topcoat/docs/cookies.md) — read and write the request cookie jar, with signed, encrypted, and prefixed cookies.
-
-**Patterns**
-- [Functions, not middlewares](https://github.com/tokio-rs/topcoat/blob/main/crates/topcoat/docs/functions_not_middlewares.md) — the recommended way to model auth and other request-scoped concerns.
 - [Memoization](https://github.com/tokio-rs/topcoat/blob/main/crates/topcoat-core/macro/docs/memoization.md) — `#[memoize]` for per-request caching and fan-out dedup.
+- [Functions, not middlewares](https://github.com/tokio-rs/topcoat/blob/main/crates/topcoat/docs/functions_not_middlewares.md) — the recommended way to model auth and other request-scoped concerns.
 
 **Project infrastructure**
 - [Assets](https://github.com/tokio-rs/topcoat/blob/main/crates/topcoat/docs/assets.md) — declare assets in Rust, serve them with content-hashed URLs.
