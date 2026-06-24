@@ -111,7 +111,7 @@ Inserting an [`Attributes`] value consumes it. Clone the value first if the same
 
 # Passing Attributes To Components
 
-Components can accept [`Attributes`] as a normal argument. This is useful for forwarding caller-controlled attributes to the component's root element.
+Components can accept [`Attributes`] as a normal argument. This is useful for forwarding caller-controlled attributes to one of the component's HTML elements.
 
 ```rust
 use topcoat::{

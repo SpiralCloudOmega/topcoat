@@ -133,12 +133,6 @@ impl ToTokens for Component {
         });
 
         quote! {
-            #(#attrs)*
-            #[derive(::topcoat::view::Props)]
-            #vis struct #props_ident #impl_generics #where_clause {
-                #(#fields),*
-            }
-
             #[allow(non_camel_case_types)]
             #vis struct #ident #impl_generics (
                 #vis ::core::marker::PhantomData<(#(#phantom_args,)*)>,
@@ -151,6 +145,12 @@ impl ToTokens for Component {
                     #item
                     #ident(cx, #(#args),*).await
                 }
+            }
+
+            #(#attrs)*
+            #[derive(::topcoat::view::Props)]
+            #vis struct #props_ident #impl_generics #where_clause {
+                #(#fields),*
             }
         }
         .to_tokens(tokens);

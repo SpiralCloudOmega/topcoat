@@ -23,6 +23,10 @@ use crate::runtime::{Unescaped, ViewPart, ViewParts};
 /// [boolean HTML attributes]: https://developer.mozilla.org/en-US/docs/Glossary/Boolean/HTML
 pub trait AttributeValueViewParts {
     /// Returns whether the containing attribute should be rendered.
+    ///
+    /// For [boolean HTML attributes], a false value must be omitted from the markup entirely.
+    ///
+    /// [boolean HTML attributes]: https://developer.mozilla.org/en-US/docs/Glossary/Boolean/HTML
     fn attribute_present(&self) -> bool;
 
     /// Appends this attribute value to `parts`.

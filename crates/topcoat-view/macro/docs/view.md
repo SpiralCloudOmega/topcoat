@@ -1,13 +1,12 @@
-The [`view!`] macro is Topcoat's HTML templating syntax. It tries to be unsurprising by staying close to real HTML instead of inventing a Rust-shaped HTML dialect.
-
-That means:
+The [`view!`] macro is Topcoat's HTML templating syntax. It tries to be unsurprising by staying close to real HTML instead of inventing a Rust-shaped HTML dialect. That means:
 
 - HTML elements use their real names.
 - HTML void elements, such as `<br>`, `<hr>`, `<img>`, `<input>`, `<meta>`, and `<link>`, are written without closing tags.
 - Non-void elements need matching closing tags.
 - Attribute names can use HTML separators like `-`, `:`, and `.`: `data-post-id`, `aria-label`, `xmlns:xlink`, `hx-get`, `class.active`.
 - Rust keywords are still valid HTML attribute names, so `type="button"` and `for="email"` work as expected.
-- Literal text and literal attribute values are string literals.
+
+Unlike HTML however, text nodes must be quoted.
 
 ```rust
 # use topcoat::{Result, view::*};
@@ -91,7 +90,7 @@ view! {
 # }
 ```
 
-Literal text must be quoted because unquoted Rust identifiers are meaningful to the macro:
+Due to a limitation in Rust macros, text nodes must be quoted:
 
 ```rust
 # use topcoat::{Result, view::*};
@@ -230,7 +229,7 @@ view! {
 # }
 ```
 
-In attributes, each arm emits one attribute node:
+In attributes, each arm can emit attribute nodes:
 
 ```rust
 # use topcoat::{Result, view::*};
@@ -248,8 +247,6 @@ view! {
 }
 # }
 ```
-
-For multiple conditional attributes, put the `if`, `for`, or `match` at the level where it can emit the attributes you need.
 
 ## `let`
 
@@ -295,7 +292,32 @@ view! {
 
 # Components
 
-Components are called inside [`view!`] with function-call syntax. Named arguments use `name: value`, and child nodes can be passed after the named arguments:
+Components are called inside [`view!`] with a call syntax similar to functions. The macro introduces named parameters with the comma-separated `name: value` syntax to improve readability for components with many (optional) parameters. If the component has a `child` property, you may pass any number of view nodes at the end of parameter list. These do not need to be comma-separated:
+
+```rust
+# use topcoat::{Result, view::*};
+# #[component]
+# async fn panel(title: &str, child: View) -> Result { view! { <section>(title)(child)</section> } }
+# #[component]
+# async fn badge(label: &str, tone: &str) -> Result { view! { <span>(label)(tone)</span> } }
+# #[component]
+# async fn example() -> Result {
+view! {
+    panel(
+        // Named title parameter:
+        title: "Profile",
+        // Child nodes:
+        <p>"Account details"</p>
+        badge(
+            label: "Active",
+            tone: "success",
+        )
+    )
+}
+# }
+```
+
+The child nodes desugar to:
 
 ```rust
 # use topcoat::{Result, view::*};
@@ -308,33 +330,35 @@ Components are called inside [`view!`] with function-call syntax. Named argument
 view! {
     panel(
         title: "Profile",
-        <p>"Account details"</p>
-        badge(
-            label: "Active",
-            tone: "success",
-        )
+        // Named child parameter:
+        child: view! {
+            <p>"Account details"</p>
+            badge(
+                label: "Active",
+                tone: "success",
+            )
+        }
     )
 }
 # }
 ```
 
-All component parameters are named parameters, except `child`, which can be passed unnamed in the last position. Conceptually, those trailing child nodes are the same thing as a `child` parameter whose value is a [`view! { ... }`][`view!`] containing those nodes.
-
-See the [`component`] macro guide in [component.md](component.md) for defining components and passing child content.
+See how to define components in the [`component`] macro guide.
 
 # Conditional Attributes
 
 Expression attributes can remove themselves from the rendered markup.
 
-When an attribute value evaluates to [`false`], the whole attribute is omitted. When it evaluates to [`None`], the whole attribute is omitted. [`Some(value)`][`Some`] renders the attribute using the inner value.
+When an attribute value evaluates to [`false`] or [`None`], the whole attribute is omitted. This matches the required [boolean HTML attributes](https://developer.mozilla.org/en-US/docs/Glossary/Boolean/HTML) behavior.
 
 ```rust
 # use topcoat::{Result, view::*};
 # #[component]
 # async fn example() -> Result {
-# let is_disabled = false;
-# let is_current = true;
-# let maybe_title: Option<&str> = None;
+let is_disabled = false;
+let is_current = true;
+let maybe_title: Option<&str> = None;
+
 view! {
     <button
         disabled=(is_disabled)
@@ -347,15 +371,7 @@ view! {
 # }
 ```
 
-If the values are:
-
-```rust
-let is_disabled = false;
-let is_current = true;
-let maybe_title: Option<&str> = None;
-```
-
-then the rendered opening tag includes `aria-current="page"`, but leaves out `disabled` and `title` completely.
+The rendered opening tag includes `aria-current="page"`, but leaves out `disabled` and `title` completely.
 
 This omission logic applies to expression attributes. Literal attributes are always present:
 
@@ -369,7 +385,7 @@ view! {
 # }
 ```
 
-For reusable runtime attribute collections, use the [`attributes!`] macro. The [attributes guide](attributes.md) covers the same attribute syntax and the [`topcoat::view::Attributes`] value that can be passed around and inserted into an element as an attribute fragment.
+For reusable runtime attribute collections, use the [`attributes!`] macro. It has the same attribute syntax as the [`view!`] macro but generates an [`topcoat::view::Attributes`] value that can be passed around and inserted into an element as an attribute fragment.
 
 # Custom Values In Markup
 
