@@ -6,7 +6,7 @@ pub use item::*;
 
 use heck::ToPascalCase;
 use proc_macro2::TokenStream;
-use quote::{ToTokens, format_ident, quote};
+use quote::{ToTokens, format_ident, quote, quote_spanned};
 use syn::{
     FnArg, GenericParam, Lifetime, Pat, ReturnType, Type, TypeParam, TypeReference,
     ext::IdentExt,
@@ -132,12 +132,15 @@ impl ToTokens for Component {
             GenericParam::Const(_) => None,
         });
 
-        quote! {
+        quote_spanned! {ident.span()=>
             #[allow(non_camel_case_types)]
             #vis struct #ident #impl_generics (
                 #vis ::core::marker::PhantomData<(#(#phantom_args,)*)>,
             ) #where_clause;
+        }
+        .to_tokens(tokens);
 
+        quote! {
             impl #impl_generics ::topcoat::view::Component for #ident #ty_generics #where_clause {
                 type Props = #props_ident #ty_generics;
 
