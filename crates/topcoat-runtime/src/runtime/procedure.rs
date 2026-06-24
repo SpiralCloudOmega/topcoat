@@ -17,11 +17,13 @@ pub struct ProcedureId(&'static str);
 
 impl ProcedureId {
     #[inline]
+    #[must_use]
     pub const fn new(inner: &'static str) -> Self {
         Self(inner)
     }
 
     #[inline]
+    #[must_use]
     pub fn as_str(&self) -> &str {
         self.0
     }
@@ -51,6 +53,7 @@ impl<A, R> Procedure<A, R> {
     }
 
     #[inline]
+    #[must_use]
     pub fn id(&self) -> ProcedureId {
         self.id
     }
@@ -64,6 +67,7 @@ pub struct ErasedProcedure {
 
 impl ErasedProcedure {
     #[inline]
+    #[must_use]
     pub const fn new<A, R>(procedure: &Procedure<A, R>) -> Self {
         Self {
             id: procedure.id,
@@ -72,10 +76,16 @@ impl ErasedProcedure {
     }
 
     #[inline]
+    #[must_use]
     pub fn id(&self) -> ProcedureId {
         self.id
     }
 
+    /// Dispatches the procedure call, awaiting its handler future.
+    ///
+    /// # Errors
+    ///
+    /// Propagates any error returned by the underlying procedure handler.
     #[inline]
     pub async fn handle(&self, cx: &Cx, body: Body) -> Result<Response> {
         (self.handle)(cx, body).await
@@ -139,11 +149,13 @@ impl Route for ProcedureRoute {
 /// Registers server procedures on a [`RouterBuilder`].
 pub trait RouterBuilderProcedureExt {
     /// Mounts a procedure route at `/_topcoat/procedures/{id}`.
+    #[must_use]
     fn procedure(self, procedure: impl Into<ErasedProcedure>) -> Self;
 
     /// Registers every procedure annotated with `#[procedure]` and collected at
     /// link time.
     #[cfg(feature = "discover")]
+    #[must_use]
     fn discover_procedures(self) -> Self;
 }
 
@@ -177,6 +189,12 @@ where
     A: Surrogated,
     R: Surrogated,
 {
+    /// Invokes the procedure from the client side.
+    ///
+    /// # Panics
+    ///
+    /// Always panics; procedures can only be invoked from the client runtime.
+    #[allow(clippy::unused_async)]
     pub async fn call(&self, _args: A::Surrogate) -> R::Surrogate {
         panic!("procedures cannot be executed on the server");
     }

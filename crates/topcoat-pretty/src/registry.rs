@@ -12,6 +12,7 @@ pub struct Registry {
 }
 
 impl Registry {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -25,6 +26,11 @@ impl Registry {
         result
     }
 
+    /// Registers a pretty-printer for the macro named `name`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a pretty-printer has already been registered under `name`.
     pub fn register_macro<T>(&mut self, name: impl Into<String>) -> &mut Self
     where
         T: Parse + PrettyPrint,
@@ -43,18 +49,18 @@ impl Registry {
             Ok(printer.eof())
         };
 
-        if self.macro_fns.contains_key(&name) {
-            panic!(
-                "registered multiple pretty print macros under the name `{}`",
-                &name
-            );
-        }
+        assert!(
+            !self.macro_fns.contains_key(&name),
+            "registered multiple pretty print macros under the name `{}`",
+            &name
+        );
 
         self.macro_fns.insert(name, pretty_print_fn);
 
         self
     }
 
+    #[must_use]
     pub fn pretty_print_macro(&self, snippet: &MacroSnippet) -> Option<syn::Result<String>> {
         self.macro_fns
             .get(snippet.name())

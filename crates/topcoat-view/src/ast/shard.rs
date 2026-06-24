@@ -21,10 +21,17 @@ pub struct Shard {
 }
 
 impl Shard {
+    #[must_use]
     pub fn new(attr: ShardAttr, item: ShardItem) -> Self {
         Self { _attr: attr, item }
     }
 
+    /// Parses a `#[shard]` attribute and function item from token streams.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if either token stream fails to parse as a
+    /// `ShardAttr` or `ShardItem`.
     pub fn parse(attr: TokenStream, item: TokenStream) -> syn::Result<Self> {
         Ok(Self::new(syn::parse2(attr)?, syn::parse2(item)?))
     }

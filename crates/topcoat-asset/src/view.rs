@@ -17,19 +17,20 @@ pub struct AssetResolver {
 
 impl AssetResolver {
     /// Build a resolver from a callback.
+    #[must_use]
     pub fn new(resolve_fn: Box<ResolveAssetFn>) -> Self {
         Self { resolve_fn }
     }
 
     /// Invoke the underlying callback.
     pub fn resolve(&self, cx: &Cx, asset: Asset, f: &mut Formatter<'_>) {
-        (self.resolve_fn)(cx, asset, f)
+        (self.resolve_fn)(cx, asset, f);
     }
 }
 
 impl FmtHtml for Asset {
     fn fmt_html(&self, cx: &Cx, f: &mut Formatter<'_>) {
-        app_context::<AssetResolver>(cx).resolve(cx, *self, f)
+        app_context::<AssetResolver>(cx).resolve(cx, *self, f);
     }
 }
 

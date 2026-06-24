@@ -16,11 +16,19 @@ pub struct BundledAsset {
 
 impl BundledAsset {
     /// Absolute path to the bundled file on disk.
+    #[must_use]
     pub fn path(&self) -> &Path {
         &self.path
     }
 
     /// Bundled filename (typically `stem-<short-hash>.ext`).
+    ///
+    /// # Panics
+    ///
+    /// Panics if the bundled file path has no final component (e.g. it
+    /// resolves to `/`), which should never happen for a bundle built by
+    /// the [`Bundler`](crate::Bundler).
+    #[must_use]
     pub fn name(&self) -> &OsStr {
         self.path
             .file_name()
@@ -29,6 +37,7 @@ impl BundledAsset {
 
     /// `Content-Type` the asset is served with, resolved when the bundle was
     /// built.
+    #[must_use]
     pub fn content_type(&self) -> &str {
         &self.content_type
     }
@@ -47,8 +56,9 @@ pub struct AssetBundle {
 
 impl AssetBundle {
     /// Bundle with no assets and no directory; useful as a placeholder.
+    #[must_use]
     pub fn empty() -> Self {
-        Default::default()
+        AssetBundle::default()
     }
 
     /// Auto-detect and load the bundle from a conventional location.
@@ -70,6 +80,12 @@ impl AssetBundle {
     ///
     /// Use [`AssetBundle::load_dir`] when you already know the exact bundle
     /// directory, such as a custom path passed to the asset bundler.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`io::ErrorKind::NotFound`] if no candidate `assets` directory
+    /// contains a readable manifest, or propagates any I/O or parse error from
+    /// reading the located manifest via [`AssetBundle::load_dir`].
     pub fn load() -> io::Result<Self> {
         let exe = std::env::current_exe()?;
         let exe_dir = exe
@@ -122,6 +138,11 @@ impl AssetBundle {
     /// for example `dist/assets` or another deployment-specific location. Use
     /// [`AssetBundle::load`] instead when you want Topcoat to look for a
     /// conventional `assets` directory near the current executable.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the manifest cannot be read or parsed, or if it
+    /// reports an unsupported version.
     pub fn load_dir(dir: impl AsRef<Path>) -> io::Result<Self> {
         let dir = dir.as_ref().to_path_buf();
         let manifest = Manifest::load(dir.join(MANIFEST_NAME))?;
@@ -147,11 +168,13 @@ impl AssetBundle {
     }
 
     /// Directory the bundle was loaded from.
+    #[must_use]
     pub fn dir(&self) -> &Path {
         &self.dir
     }
 
     /// Look up the bundled file for an [`Asset`] ID.
+    #[must_use]
     pub fn get(&self, id: Asset) -> Option<&BundledAsset> {
         self.bundled_assets.get(&id)
     }

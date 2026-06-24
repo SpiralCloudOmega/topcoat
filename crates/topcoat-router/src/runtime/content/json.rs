@@ -115,9 +115,12 @@ where
     /// Deserializes JSON bytes into `Json<T>`.
     ///
     /// Unlike the [`FromRequest`] extractor, this does not inspect any
-    /// `Content-Type`; it parses `bytes` directly. Returns a bad-request error
-    /// when the bytes are not valid JSON or do not match `T`, including any
-    /// trailing data after the JSON value.
+    /// `Content-Type`; it parses `bytes` directly.
+    ///
+    /// # Errors
+    ///
+    /// Returns a bad-request error when `bytes` are not valid JSON or do not
+    /// match `T`, or when trailing data follows the JSON value.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         let mut deserializer = serde_json::Deserializer::from_slice(bytes);
         let value = serde_path_to_error::deserialize(&mut deserializer)
@@ -165,6 +168,7 @@ fn json_content_type(content_type: Option<&str>) -> bool {
             .is_some_and(|subtype| subtype.ends_with("+json"))
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn json_deserialization_error(error: serde_path_to_error::Error<serde_json::Error>) -> Error {
     let description = match error.inner().classify() {
         serde_json::error::Category::Data => {
@@ -298,7 +302,7 @@ mod tests {
             response
                 .headers()
                 .get(CONTENT_TYPE)
-                .map(|value| value.as_bytes()),
+                .map(http::HeaderValue::as_bytes),
             Some(b"application/json".as_slice())
         );
 

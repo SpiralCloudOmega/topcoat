@@ -40,6 +40,7 @@ impl HtmlIdent {
     /// The source span covering the identifier. Falls back to the first
     /// segment's span when the underlying [`Span::join`] is unavailable (i.e.
     /// on stable Rust outside of `proc_macro2`'s fallback mode).
+    #[must_use]
     pub fn span(&self) -> Span {
         let first = self.first.span();
         match self.rest.last() {
@@ -51,6 +52,11 @@ impl HtmlIdent {
     /// Parses an [`HtmlIdent`] that only allows `-` as a separator. Used for
     /// HTML element names, where `:` and `.` would tear apart adjacent
     /// attribute syntax like `:value` or `class.active`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the input does not begin with a valid identifier, or
+    /// if a `-` separator is not adjacent to the surrounding identifier segments.
     pub fn parse_dash_only(input: ParseStream) -> syn::Result<Self> {
         Self::parse_inner(input, false)
     }
@@ -103,6 +109,7 @@ impl HtmlIdent {
 }
 
 impl HtmlIdentSeparator {
+    #[must_use]
     pub fn span(&self) -> Span {
         match self {
             Self::Dash(token) => token.span(),

@@ -65,6 +65,11 @@ pub struct Registry {
 impl Registry {
     /// Loads a registry by reading and parsing the `registry.toml` in `dir` (a
     /// registry crate's declared registry directory).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the manifest cannot be read or parsed, or if it
+    /// declares a format version newer than [`MANIFEST_VERSION`].
     pub fn load(dir: PathBuf) -> Result<Self, Error> {
         let manifest_path = dir.join(MANIFEST_FILE);
         let raw = std::fs::read_to_string(&manifest_path).map_err(|source| Error::Read {
@@ -91,6 +96,7 @@ impl Registry {
     }
 
     /// Looks up a component by its registry name.
+    #[must_use]
     pub fn get(&self, name: &str) -> Option<Component<'_>> {
         self.components
             .get_key_value(name)
@@ -107,6 +113,7 @@ impl Registry {
     }
 
     /// Looks up a theme by its registry name.
+    #[must_use]
     pub fn theme(&self, name: &str) -> Option<Theme<'_>> {
         self.themes.get_key_value(name).map(|(name, entry)| Theme {
             name,
@@ -125,17 +132,23 @@ pub struct Component<'a> {
 
 impl Component<'_> {
     /// The name used to add the component, e.g. `button`.
+    #[must_use]
     pub fn name(&self) -> &str {
         self.name
     }
 
     /// Computes the component's content hash by reading and hashing its source
     /// (see [`content_hash`]).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the component's source file cannot be read.
     pub fn hash(&self) -> Result<String, Error> {
         Ok(content_hash(&self.read_source()?))
     }
 
     /// The file name written into the user's components directory.
+    #[must_use]
     pub fn file_name(&self) -> &str {
         Path::new(&self.entry.source)
             .file_name()
@@ -144,12 +157,17 @@ impl Component<'_> {
     }
 
     /// Reads the component's Rust source from the registry.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the source file cannot be read.
     pub fn read_source(&self) -> Result<String, Error> {
         let path = self.dir.join(&self.entry.source);
         std::fs::read_to_string(&path).map_err(|source| Error::Read { path, source })
     }
 
     /// The other components this component depends on.
+    #[must_use]
     pub fn dependencies(&self) -> &[Dependency] {
         &self.entry.dependencies
     }
@@ -165,6 +183,7 @@ pub struct Theme<'a> {
 
 impl Theme<'_> {
     /// The name used to select the theme, e.g. `neutral`.
+    #[must_use]
     pub fn name(&self) -> &str {
         self.name
     }
@@ -172,17 +191,26 @@ impl Theme<'_> {
     /// The file name written into the user's project. Every theme installs to
     /// the same `styles.css` (it becomes the project's Tailwind input), rather
     /// than carrying its registry source name (e.g. `neutral.css`) into the project.
-    pub fn file_name(&self) -> &str {
+    #[must_use]
+    pub fn file_name(&self) -> &'static str {
         "styles.css"
     }
 
     /// Computes the theme's content hash by reading and hashing its source (see
     /// [`content_hash`]).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the theme's source file cannot be read.
     pub fn hash(&self) -> Result<String, Error> {
         Ok(content_hash(&self.read_source()?))
     }
 
     /// Reads the theme's CSS source from the registry.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the source file cannot be read.
     pub fn read_source(&self) -> Result<String, Error> {
         let path = self.dir.join(&self.entry.source);
         std::fs::read_to_string(&path).map_err(|source| Error::Read { path, source })
@@ -194,6 +222,7 @@ impl Theme<'_> {
 /// value, so a project can tell its installed component apart from an updated
 /// one by comparing the hash it recorded against a fresh hash of the registry's
 /// current source.
+#[must_use]
 pub fn content_hash(source: &str) -> String {
     format!("sha256:{}", hex(Sha256::digest(source.as_bytes()).as_ref()))
 }

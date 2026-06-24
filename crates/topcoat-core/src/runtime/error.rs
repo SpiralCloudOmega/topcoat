@@ -15,6 +15,11 @@ pub struct Error(anyhow::Error);
 
 impl Error {
     /// Attempt to downcast the error object to a concrete type.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(Self)` if the stored error is not an instance of `E`,
+    /// handing back the original error unchanged.
     #[inline]
     pub fn downcast<E>(self) -> Result<E, Self>
     where
@@ -25,6 +30,7 @@ impl Error {
 
     /// Downcast this error object by reference.
     #[inline]
+    #[must_use]
     pub fn downcast_ref<E>(&self) -> Option<&E>
     where
         E: Display + Debug + Send + Sync + 'static,

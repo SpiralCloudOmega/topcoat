@@ -32,10 +32,17 @@ impl Parse for LayerItem {
 pub struct Layer(LayerAttr, LayerItem);
 
 impl Layer {
+    #[must_use]
     pub fn new(attr: LayerAttr, item: LayerItem) -> Self {
         Self(attr, item)
     }
 
+    /// Parses a layer attribute and item from token streams.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if either token stream fails to parse as a
+    /// [`LayerAttr`] or [`LayerItem`].
     pub fn parse(attr: TokenStream, item: TokenStream) -> syn::Result<Self> {
         Ok(Self::new(syn::parse2(attr)?, syn::parse2(item)?))
     }
@@ -49,6 +56,7 @@ impl ToTokens for Layer {
 
         let render = quote! {
             |cx, body, next| {
+                #[allow(clippy::unused_async)]
                 #item
                 Box::pin(async move {
                     ::topcoat::router::IntoResponse::into_response(#ident(cx, body, next).await?)
@@ -56,15 +64,16 @@ impl ToTokens for Layer {
             }
         };
 
-        match attr.path.as_ref() {
-            Some(path) => quote! {
+        if let Some(path) = attr.path.as_ref() {
+            quote! {
                 #[allow(non_upper_case_globals)]
                 const #ident: ::topcoat::router::LayerFn = ::topcoat::router::LayerFn::new(
                     ::std::borrow::Cow::Borrowed(::topcoat::router::Path::new(#path)),
                     #render,
                 );
-            },
-            None => quote! {
+            }
+        } else {
+            quote! {
                 #[allow(non_upper_case_globals)]
                 const #ident: ::topcoat::router::ModuleLayerFn = ::topcoat::router::ModuleLayerFn::new(module_path!(), #render);
             }

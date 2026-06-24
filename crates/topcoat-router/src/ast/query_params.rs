@@ -28,10 +28,17 @@ impl Parse for QueryParamsItem {
 pub struct QueryParams(QueryParamsAttr, QueryParamsItem);
 
 impl QueryParams {
+    #[must_use]
     pub fn new(attr: QueryParamsAttr, item: QueryParamsItem) -> Self {
         Self(attr, item)
     }
 
+    /// Parses a `query_params` attribute and item from token streams.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if either token stream fails to parse as a
+    /// [`QueryParamsAttr`] or [`QueryParamsItem`].
     pub fn parse(attr: TokenStream, item: TokenStream) -> syn::Result<Self> {
         Ok(Self::new(syn::parse2(attr)?, syn::parse2(item)?))
     }

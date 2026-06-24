@@ -48,10 +48,18 @@ impl Parse for RouteItem {
 pub struct Route(RouteAttr, RouteItem);
 
 impl Route {
+    #[must_use]
     pub fn new(attr: RouteAttr, item: RouteItem) -> Self {
         Self(attr, item)
     }
 
+    /// Parses a route attribute and item from token streams.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if either token stream fails to parse as a
+    /// [`RouteAttr`] or [`RouteItem`], or if the item is not a valid route
+    /// handler.
     pub fn parse(attr: TokenStream, item: TokenStream) -> syn::Result<Self> {
         Ok(Self::new(syn::parse2(attr)?, syn::parse2(item)?))
     }
@@ -77,6 +85,7 @@ impl ToTokens for Route {
 
         let render = quote! {
             |cx, body| {
+                #[allow(clippy::unused_async)]
                 #item
                 Box::pin(async move {
                     #parse_request
@@ -85,28 +94,25 @@ impl ToTokens for Route {
             }
         };
 
-        match attr.path.as_ref() {
-            Some(path) => {
-                let method = &attr.method;
-                quote! {
-                    #[allow(non_upper_case_globals)]
-                    const #ident: ::topcoat::router::RouteFn = ::topcoat::router::RouteFn::new(
-                        ::topcoat::router::Method::#method,
-                        ::std::borrow::Cow::Borrowed(::topcoat::router::Path::new(#path)),
-                        #render,
-                    );
-                }
+        if let Some(path) = attr.path.as_ref() {
+            let method = &attr.method;
+            quote! {
+                #[allow(non_upper_case_globals)]
+                const #ident: ::topcoat::router::RouteFn = ::topcoat::router::RouteFn::new(
+                    ::topcoat::router::Method::#method,
+                    ::std::borrow::Cow::Borrowed(::topcoat::router::Path::new(#path)),
+                    #render,
+                );
             }
-            None => {
-                let method = &attr.method;
-                quote! {
-                    #[allow(non_upper_case_globals)]
-                    const #ident: ::topcoat::router::ModuleRouteFn = ::topcoat::router::ModuleRouteFn::new(
-                        ::topcoat::router::Method::#method,
-                        module_path!(),
-                        #render,
-                    );
-                }
+        } else {
+            let method = &attr.method;
+            quote! {
+                #[allow(non_upper_case_globals)]
+                const #ident: ::topcoat::router::ModuleRouteFn = ::topcoat::router::ModuleRouteFn::new(
+                    ::topcoat::router::Method::#method,
+                    module_path!(),
+                    #render,
+                );
             }
         }
         .to_tokens(tokens);

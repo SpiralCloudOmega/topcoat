@@ -29,6 +29,7 @@ impl View {
     /// This is usually called by generated `view!` code after collecting the
     /// nodes and attributes for a fragment.
     #[inline]
+    #[must_use]
     pub fn new(parts: ViewParts) -> Self {
         Self {
             part: parts.into(),
@@ -38,6 +39,7 @@ impl View {
 
     /// Returns a `View` that renders to an empty string.
     #[inline]
+    #[must_use]
     pub fn empty() -> Self {
         Self::default()
     }
@@ -146,6 +148,7 @@ pub enum ViewPart {
 impl ViewPart {
     /// Returns an empty view part.
     #[inline]
+    #[must_use]
     pub fn empty() -> Self {
         Self::Empty
     }
@@ -203,12 +206,12 @@ impl FmtHtml for ViewPart {
             Self::UnescapedStaticStr(inner) => inner.fmt_html(cx, f),
             Self::BoxDyn(inner) => FmtHtml::fmt_html(inner, cx, f),
             Self::BoxSlice(inner) => {
-                for part in inner.iter() {
+                for part in inner {
                     part.fmt_html(cx, f);
                 }
             }
             Self::Vec(inner) => {
-                for part in inner.iter() {
+                for part in inner {
                     part.fmt_html(cx, f);
                 }
             }
@@ -239,8 +242,8 @@ impl FmtHtml for ViewPart {
             Self::UnescapedString(inner) => inner.len(),
             Self::UnescapedStaticStr(inner) => inner.len(),
             Self::BoxDyn(inner) => FmtHtml::size_hint(inner),
-            Self::BoxSlice(inner) => inner.iter().map(|part| part.size_hint()).sum(),
-            Self::Vec(inner) => inner.iter().map(|part| part.size_hint()).sum(),
+            Self::BoxSlice(inner) => inner.iter().map(FmtHtml::size_hint).sum(),
+            Self::Vec(inner) => inner.iter().map(FmtHtml::size_hint).sum(),
         }
     }
 }
@@ -303,6 +306,7 @@ pub struct ViewParts {
 impl ViewParts {
     /// Creates an empty view-parts builder.
     #[inline]
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -315,7 +319,7 @@ impl ViewParts {
             self.items.push(first);
             self.items.push(part);
         } else if self.items.is_empty() {
-            self.first = Some(part)
+            self.first = Some(part);
         } else {
             self.items.push(part);
         }

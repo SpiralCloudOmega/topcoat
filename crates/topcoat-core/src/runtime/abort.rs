@@ -70,15 +70,17 @@ pub struct AbortStore {
 }
 
 impl AbortStore {
+    #[must_use]
     pub fn new() -> Self {
-        Default::default()
+        AbortStore::default()
     }
 
     fn abort(&self, value: Box<dyn Any + Send + Sync>) {
         let old = self.inner.lock().unwrap().replace(value);
-        if old.is_some() {
-            panic!("aborted request context that was already aborted");
-        }
+        assert!(
+            old.is_none(),
+            "aborted request context that was already aborted"
+        );
     }
 
     fn take(&self) -> Option<Box<dyn Any + Send + Sync>> {
@@ -210,7 +212,7 @@ mod tests {
         .await;
         match outcome {
             MaybeAborted::Aborted(value) => {
-                assert_eq!(*value.downcast::<String>().unwrap(), "stop")
+                assert_eq!(*value.downcast::<String>().unwrap(), "stop");
             }
             MaybeAborted::Completed(()) => panic!("expected abort"),
         }

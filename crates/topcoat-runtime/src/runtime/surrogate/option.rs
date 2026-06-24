@@ -40,11 +40,21 @@ where
         Self(Some(v.into_real()))
     }
 
+    /// Returns the contained value.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the option is `None`.
     #[inline]
     pub fn unwrap(self) -> T::Surrogate {
         self.0.unwrap().into_surrogate()
     }
 
+    /// Returns the contained value, panicking with `msg` if `None`.
+    ///
+    /// # Panics
+    ///
+    /// Panics with `msg` if the option is `None`.
     #[inline]
     pub fn expect(self, msg: &StrSurrogate) -> T::Surrogate {
         self.0.expect(&msg.0).into_surrogate()
@@ -65,7 +75,7 @@ where
         S: serde::Serializer,
     {
         let inner: Option<<&T as Surrogated>::Surrogate> =
-            self.0.as_ref().map(|v| v.into_surrogate());
+            self.0.as_ref().map(Surrogated::into_surrogate);
         serialize_tagged(serializer, "Option", &inner)
     }
 }
@@ -80,6 +90,6 @@ where
         D: serde::Deserializer<'de>,
     {
         let inner: Option<T::Surrogate> = deserialize_tagged(deserializer, "Option")?;
-        Ok(Self(inner.map(|s| s.into_real())))
+        Ok(Self(inner.map(Surrogate::into_real)))
     }
 }

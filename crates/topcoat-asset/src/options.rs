@@ -42,37 +42,41 @@ impl AssetOptions {
     };
 
     /// Returns the configured [`rename`](Self::rename) value, if any.
+    #[must_use]
     pub fn rename(&self) -> Option<&str> {
         self.rename.as_deref()
     }
 
     /// Returns the configured [`extension`](Self::extension) value, if any.
+    #[must_use]
     pub fn extension(&self) -> Option<&str> {
         self.extension.as_deref()
     }
 
     /// Returns the configured [`checksum`](Self::checksum) value, if any.
+    #[must_use]
     pub fn checksum(&self) -> Option<&str> {
         self.checksum.as_deref()
     }
 
     /// Returns the configured [`content_type`](Self::content_type) value, if any.
+    #[must_use]
     pub fn content_type(&self) -> Option<&str> {
         self.content_type.as_deref()
     }
 
     pub(crate) const fn encode_into(&self, w: &mut ConstWriter<'_>) {
-        w.write_str_opt(cow_as_str(&self.rename));
-        w.write_str_opt(cow_as_str(&self.extension));
-        w.write_str_opt(cow_as_str(&self.checksum));
-        w.write_str_opt(cow_as_str(&self.content_type));
+        w.write_str_opt(cow_as_str(self.rename.as_ref()));
+        w.write_str_opt(cow_as_str(self.extension.as_ref()));
+        w.write_str_opt(cow_as_str(self.checksum.as_ref()));
+        w.write_str_opt(cow_as_str(self.content_type.as_ref()));
     }
 
     pub(crate) const fn hash_into(&self, mut h: u64) -> u64 {
-        h = hash_opt_str(h, cow_as_str(&self.rename));
-        h = hash_opt_str(h, cow_as_str(&self.extension));
-        h = hash_opt_str(h, cow_as_str(&self.checksum));
-        h = hash_opt_str(h, cow_as_str(&self.content_type));
+        h = hash_opt_str(h, cow_as_str(self.rename.as_ref()));
+        h = hash_opt_str(h, cow_as_str(self.extension.as_ref()));
+        h = hash_opt_str(h, cow_as_str(self.checksum.as_ref()));
+        h = hash_opt_str(h, cow_as_str(self.content_type.as_ref()));
         h
     }
 
@@ -86,7 +90,7 @@ impl AssetOptions {
     }
 }
 
-const fn cow_as_str<'a>(c: &'a Option<Cow<'static, str>>) -> Option<&'a str> {
+const fn cow_as_str<'a>(c: Option<&'a Cow<'static, str>>) -> Option<&'a str> {
     match c {
         None => None,
         Some(Cow::Borrowed(s)) => Some(s),

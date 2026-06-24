@@ -106,9 +106,12 @@ where
     /// Deserializes URL-encoded form bytes into `Form<T>`.
     ///
     /// Unlike the [`FromRequest`] extractor, this does not inspect the request
-    /// method or `Content-Type`; it parses `bytes` directly. Returns a
-    /// bad-request error, including the offending field path, when the bytes do
-    /// not match `T`.
+    /// method or `Content-Type`; it parses `bytes` directly.
+    ///
+    /// # Errors
+    ///
+    /// Returns a bad-request error when `bytes` are not valid URL-encoded form
+    /// data matching `T`.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         let deserializer = serde_urlencoded::Deserializer::new(form_urlencoded::parse(bytes));
         let value = serde_path_to_error::deserialize(deserializer).map_err(|error| {
@@ -340,7 +343,7 @@ mod tests {
             response
                 .headers()
                 .get(CONTENT_TYPE)
-                .map(|value| value.as_bytes()),
+                .map(http::HeaderValue::as_bytes),
             Some(FORM_CONTENT_TYPE.as_bytes())
         );
 

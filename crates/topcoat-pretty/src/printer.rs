@@ -59,6 +59,7 @@ impl<'a> Printer<'a> {
         }
     }
 
+    #[must_use]
     pub fn registry(&self) -> &'a Registry {
         self.registry
     }
@@ -84,6 +85,11 @@ impl<'a> Printer<'a> {
         }
     }
 
+    /// Pushes a text token onto the buffer.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `string.len()` does not fit in an `isize`.
     pub fn scan_text(&mut self, string: Cow<'static, str>, mode: TextMode) {
         self.tokens.push_len(string.len().try_into().unwrap());
         let token = Token::Text(TextToken::new(string, mode));
@@ -105,6 +111,7 @@ impl<'a> Printer<'a> {
         self.scan_indent += indent;
     }
 
+    #[must_use]
     pub fn current_indent(&self) -> isize {
         self.scan_indent
     }
@@ -116,7 +123,8 @@ impl<'a> Printer<'a> {
 
     /// # Panics
     ///
-    /// Panics if there was no matching call to [`scan_begin`](Self::scan_begin) prior to running this function.
+    /// Panics if there was no matching call to [`scan_begin`](Self::scan_begin) prior to running
+    /// this function.
     pub fn scan_end(&mut self) {
         let len = self
             .tokens
