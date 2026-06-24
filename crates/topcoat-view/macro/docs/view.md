@@ -337,7 +337,7 @@ view! {
                 label: "Active",
                 tone: "success",
             )
-        }
+        }?
     )
 }
 # }
