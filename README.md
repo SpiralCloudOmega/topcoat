@@ -79,13 +79,14 @@ src/app/
 
 ### Asset bundling
 
+The bundler scans your compiled binary for `asset!` calls, copies (or even downloads) every file into a local asset directory, and allows Topcoat to serve them efficiently with aggressive browser caching.
+
 ```rust,ignore
 const FERRIS: Asset = asset!("./ferris.png");
 
 view! { <img src=(FERRIS)> }
 ```
 
-The bundler scans your compiled binary for `asset!` calls, copies (or downloads) every file, and serves them at `/_topcoat/assets/ferris-<hash>.png`. Remote assets can be pinned with a SHA-256 checksum.
 
 ### Built-in Tailwind support
 
