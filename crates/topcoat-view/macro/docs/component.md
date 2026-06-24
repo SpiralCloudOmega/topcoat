@@ -119,6 +119,8 @@ async fn shout(label: impl Into<String> + Send) -> Result {
 }
 ```
 
+Prefer the `#[into]` attribute over `impl Into<T>` to reduce generic instantiations of your component body.
+
 # Request Context
 
 Components can ask for the current request context by declaring a `cx` parameter that borrows [`Cx`]:
