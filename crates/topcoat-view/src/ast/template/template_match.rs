@@ -39,7 +39,7 @@ impl<B: WriteAttribute> WriteAttribute for TemplateMatch<B> {
     }
 }
 
-impl<B: Parse> Parse for TemplateMatch<B> {
+impl<B: Parse + MatchArmBody> Parse for TemplateMatch<B> {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let content;
         Ok(Self {
@@ -57,7 +57,7 @@ impl<B: Parse> Parse for TemplateMatch<B> {
     }
 }
 
-impl<B: Parse> ParseOption for TemplateMatch<B> {
+impl<B: Parse + MatchArmBody> ParseOption for TemplateMatch<B> {
     fn peek(input: ParseStream) -> bool {
         // `match=` is an attribute named `match`, not the start of a match.
         input.peek(Token![match]) && !input.peek2(Token![=])
@@ -100,6 +100,14 @@ pub struct TemplateMatchArm<B> {
     pub comma: Option<Token![,]>,
 }
 
+/// A match-arm body that knows whether it is a `{ ... }` block. Block bodies are
+/// self-delimiting, so they neither require nor are formatted with a trailing
+/// comma, unlike single-node bodies.
+pub trait MatchArmBody {
+    /// Returns whether this body is a `{ ... }` block.
+    fn is_block_body(&self) -> bool;
+}
+
 #[allow(private_bounds)]
 impl<B: WriteView> TemplateMatchArm<B> {
     pub(crate) fn write(&self, arms: &mut MatchArmsBuilder) {
@@ -122,34 +130,42 @@ impl<B: WriteAttribute> TemplateMatchArm<B> {
     }
 }
 
-impl<B: Parse> Parse for TemplateMatchArm<B> {
+impl<B: Parse + MatchArmBody> Parse for TemplateMatchArm<B> {
     fn parse(input: ParseStream) -> syn::Result<Self> {
+        let pat = Pat::parse_multi_with_leading_vert(input)?;
+        let guard = if input.peek(Token![if]) {
+            let if_token: Token![if] = input.parse()?;
+            let guard: Expr = input.parse()?;
+            Some((if_token, Box::new(guard)))
+        } else {
+            None
+        };
+        let fat_arrow_token = input.parse()?;
+        let body: Box<B> = Box::new(input.parse()?);
+        // A single-node body must be comma-separated from the next arm; a
+        // `{ ... }` block is self-delimiting, and the final arm may omit it.
+        let comma = if input.peek(Token![,]) {
+            Some(input.parse()?)
+        } else if body.is_block_body() || input.is_empty() {
+            None
+        } else {
+            return Err(input.error("expected `,`"));
+        };
         Ok(Self {
-            pat: Pat::parse_multi_with_leading_vert(input)?,
-            guard: {
-                if input.peek(Token![if]) {
-                    let if_token: Token![if] = input.parse()?;
-                    let guard: Expr = input.parse()?;
-                    Some((if_token, Box::new(guard)))
-                } else {
-                    None
-                }
-            },
-            fat_arrow_token: input.parse()?,
-            body: Box::new(input.parse()?),
-            comma: {
-                if input.is_empty() {
-                    input.parse()?
-                } else {
-                    Some(input.parse()?)
-                }
-            },
+            pat,
+            guard,
+            fat_arrow_token,
+            body,
+            comma,
         })
     }
 }
 
 #[cfg(feature = "pretty")]
-impl topcoat_pretty::PrettyPrint for TemplateMatchArm<crate::ast::view::Node> {
+impl<B> topcoat_pretty::PrettyPrint for TemplateMatchArm<B>
+where
+    B: topcoat_pretty::PrettyPrint + MatchArmBody,
+{
     fn pretty_print(&self, printer: &mut topcoat_pretty::Printer<'_>) {
         self.pat.pretty_print(printer);
         " ".pretty_print(printer);
@@ -162,34 +178,14 @@ impl topcoat_pretty::PrettyPrint for TemplateMatchArm<crate::ast::view::Node> {
         }
         " ".pretty_print(printer);
         self.body.pretty_print(printer);
-        if !self.body.is_block() {
+        // Block bodies are self-delimiting, so only single-node bodies get a
+        // trailing comma.
+        if !self.body.is_block_body() {
             if let Some(comma) = &self.comma {
                 comma.pretty_print(printer);
             } else {
                 ",".pretty_print(printer);
             }
-        }
-    }
-}
-
-#[cfg(feature = "pretty")]
-impl topcoat_pretty::PrettyPrint for TemplateMatchArm<crate::ast::attributes::AttributeNode> {
-    fn pretty_print(&self, printer: &mut topcoat_pretty::Printer<'_>) {
-        self.pat.pretty_print(printer);
-        " ".pretty_print(printer);
-        self.fat_arrow_token.pretty_print(printer);
-        if let Some((if_token, expr)) = &self.guard {
-            " ".pretty_print(printer);
-            if_token.pretty_print(printer);
-            " ".pretty_print(printer);
-            expr.pretty_print(printer);
-        }
-        " ".pretty_print(printer);
-        self.body.pretty_print(printer);
-        if let Some(comma) = &self.comma {
-            comma.pretty_print(printer);
-        } else {
-            ",".pretty_print(printer);
         }
     }
 }

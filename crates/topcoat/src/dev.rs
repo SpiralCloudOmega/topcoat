@@ -49,7 +49,5 @@ pub async fn script() -> Result {
     };
     let src = format!("{base}/dev.js");
 
-    view! {
-        <script src=(src)></script>
-    }
+    view! { <script src=(src)></script> }
 }
