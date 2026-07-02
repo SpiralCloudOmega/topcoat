@@ -26,6 +26,14 @@ impl FmtCommand {
         let mut registry = Registry::new();
         registry.register_macro::<topcoat_view::ast::view::View>("view");
         registry.register_macro::<topcoat_view::ast::attributes::Attributes>("attributes");
+        registry.register_macro::<topcoat_font::ast::font_face::FontFace>("font_face");
+        registry.register_macro::<topcoat_font::ast::font::Font>("font");
+        registry.register_macro::<topcoat_font_fontsource::ast::font_face::FontsourceFontFace>(
+            "fontsource_font_face",
+        );
+        registry.register_macro::<topcoat_font_fontsource::ast::font::FontsourceFont>(
+            "fontsource_font",
+        );
 
         let start = Instant::now();
         let result: Result<(), Error> = async {
