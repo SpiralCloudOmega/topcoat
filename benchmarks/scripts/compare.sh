@@ -32,8 +32,14 @@ median() {
     jq -r '"Machine: \(.cpu), \(.os) | oha \(.oha) | \(.runs) runs x \(.duration) at \(.connections) connections, fixed rate \(.rate) req/s\(if .single_thread then " | single-threaded (TOKIO_WORKER_THREADS=1)" else "" end)"' \
         "$RESULTS_DIR/meta.json" 2>/dev/null || true
     echo
-    echo "| Route | Framework | req/s (median) | p50 ms | p90 ms | p99 ms | bytes/resp | success |"
-    echo "|-------|-----------|----------------|--------|--------|--------|------------|---------|"
+
+    # Column headers and per-column alignment (l = left, r = right). Data rows
+    # are buffered so the columns can be padded to a common width; the raw
+    # markdown then lines up when read as plain text, and still renders in any
+    # markdown viewer.
+    headers=("Route" "Framework" "req/s (median)" "p50 ms" "p90 ms" "p99 ms" "bytes/resp" "success")
+    aligns=(l l r r r r r r)
+    rows=()
 
     for i in "${!ROUTE_LABELS[@]}"; do
         label="${ROUTE_LABELS[$i]}"
@@ -56,8 +62,49 @@ median() {
                 echo "warning: $framework/$label saw status codes $codes" >&2
             fi
 
-            echo "| \`$path\` | $framework | $rps | $p50 | $p90 | $p99 | $size | $success |"
+            rows+=("$(printf '`%s`\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
+                "$path" "$framework" "$rps" "$p50" "$p90" "$p99" "$size" "$success")")
         done
+    done
+
+    # Column widths: the widest of the header and any cell in that column.
+    ncol=${#headers[@]}
+    widths=()
+    for c in $(seq 0 $((ncol - 1))); do widths[c]=${#headers[c]}; done
+    for row in "${rows[@]}"; do
+        IFS=$'\t' read -r -a cells <<<"$row"
+        for c in $(seq 0 $((ncol - 1))); do
+            (( ${#cells[c]} > widths[c] )) && widths[c]=${#cells[c]}
+        done
+    done
+
+    # Pad one cell to its column width, honoring alignment.
+    cell() {
+        if [ "${aligns[$2]}" = r ]; then printf '%*s' "${widths[$2]}" "$1"
+        else printf '%-*s' "${widths[$2]}" "$1"; fi
+    }
+
+    # Header row.
+    line="|"
+    for c in $(seq 0 $((ncol - 1))); do line+=" $(cell "${headers[c]}" "$c") |"; done
+    echo "$line"
+
+    # Separator row: dashes to the column width, with a trailing colon marking
+    # right-aligned columns.
+    line="|"
+    for c in $(seq 0 $((ncol - 1))); do
+        dashes=$(printf '%*s' "${widths[c]}" ''); dashes=${dashes// /-}
+        [ "${aligns[c]}" = r ] && dashes="${dashes%?}:"
+        line+=" $dashes |"
+    done
+    echo "$line"
+
+    # Data rows.
+    for row in "${rows[@]}"; do
+        IFS=$'\t' read -r -a cells <<<"$row"
+        line="|"
+        for c in $(seq 0 $((ncol - 1))); do line+=" $(cell "${cells[c]}" "$c") |"; done
+        echo "$line"
     done
 } | tee "$SUMMARY"
 
