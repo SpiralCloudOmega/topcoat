@@ -6,7 +6,7 @@ use std::sync::Arc;
 use topcoat_core::runtime::context::{ContextMap, Cx};
 
 use crate::runtime::{
-    Endpoint, Layer, LayerId, Layers, LayoutFn, Next, PageFn, PageWithLayouts, Path, PathSegment,
+    Endpoint, Layer, LayerId, Layers, LayoutFn, Next, PageFn, PageWithLayouts, PathSegment,
     RawPathParams, Request, Response, Route, Terminal, respond,
 };
 
@@ -80,7 +80,7 @@ impl Router {
                 };
                 (matched.value.layers(), terminal, path_params)
             } else {
-                not_found_layers = self.layers.for_path(request_path(&parts.uri));
+                not_found_layers = self.layers.match_path(parts.uri.path());
                 (
                     &*not_found_layers,
                     Terminal::NotFound,
@@ -96,12 +96,6 @@ impl Router {
         let response = next.run(&mut cx, body).await;
         respond(&cx, response)
     }
-}
-
-/// Parses a request URI's path into a [`Path`], falling back to the root path
-/// when it is malformed so layer selection still resolves the root layers.
-fn request_path(uri: &http::Uri) -> &Path {
-    Path::from_str(uri.path()).unwrap_or(Path::new("/"))
 }
 
 /// Builds a [`Router`] for a Topcoat application.
@@ -408,7 +402,7 @@ impl RouterBuilder {
                             _ => None,
                         })
                         .collect();
-                    let layers = layers.for_path(route.path()).into_boxed_slice();
+                    let layers = layers.for_endpoint(route.path()).into_boxed_slice();
                     Endpoint::new(path_params, layers)
                 });
 
