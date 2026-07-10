@@ -248,6 +248,7 @@ mod tests {
     fn omits_none_option_attribute() {
         let mut attrs = Attributes::new();
         attrs.insert(&Cx::default(), "title", Option::<&str>::None);
+        assert!(attrs.get("title").unwrap().is_empty());
         assert_eq!(render(attrs), "");
     }
 

@@ -167,6 +167,14 @@ impl ViewPart {
     pub fn empty() -> Self {
         Self::Empty
     }
+
+    /// Returns `true` if the view part is [`Empty`].
+    ///
+    /// [`Empty`]: ViewPart::Empty
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        matches!(self, Self::Empty)
+    }
 }
 
 /// A boxed [`FmtHtml`] that can be cloned.
