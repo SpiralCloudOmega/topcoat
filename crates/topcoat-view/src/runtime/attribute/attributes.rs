@@ -58,8 +58,12 @@ impl Attributes {
 
     /// Inserts or replaces an attribute.
     ///
-    /// The value is converted with [`AttributeValueViewParts`]. If the key was
-    /// already present, the previous rendered value is returned.
+    /// The value is converted with [`AttributeValueViewParts`].
+    /// If the key was already present, the previous rendered value is returned.
+    /// If the implementation of [`AttributeValueViewParts`] for `v` signals that
+    /// the attribute should not be present, [`ViewPart::empty`] will be used as
+    /// the value instead, which call cause the previous value to be removed
+    /// and the attribute will not be rendered in a `view!`.
     #[inline]
     pub fn insert(
         &mut self,
@@ -67,9 +71,13 @@ impl Attributes {
         k: impl Into<String>,
         v: impl AttributeValueViewParts,
     ) -> Option<ViewPart> {
-        let mut view_parts = ViewParts::new();
-        v.into_view_parts(cx, &mut view_parts);
-        self.map.insert(k.into(), view_parts.into())
+        if v.attribute_present() {
+            let mut view_parts = ViewParts::new();
+            v.into_view_parts(cx, &mut view_parts);
+            self.map.insert(k.into(), view_parts.into())
+        } else {
+            self.map.insert(k.into(), ViewPart::empty())
+        }
     }
 
     /// Removes all attributes from the collection.
