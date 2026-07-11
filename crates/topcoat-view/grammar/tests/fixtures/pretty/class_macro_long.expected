@@ -4,6 +4,6 @@ fn classes() {
         "rounded-md text-sm font-medium",
         "transition-colors focus-visible:outline-none" if focused,
         variant_classes,
-        "pointer-events-none opacity-50" if disabled else "cursor-pointer"
+        "pointer-events-none opacity-50" if disabled else "cursor-pointer",
     );
 }

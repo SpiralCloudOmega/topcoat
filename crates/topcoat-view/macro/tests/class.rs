@@ -95,7 +95,7 @@ async fn nested_class_is_spliced_with_separators() {
 #[tokio::test]
 async fn trailing_comma_is_allowed() {
     let cx = &Cx::default();
-    let html = r(view! { cx => <p class=(class!("a", "b",))></p> });
+    let html = r(view! { cx => <p class=(class!("a", "b"))></p> });
     assert_eq!(html, r#"<p class="a b"></p>"#);
 }
 
@@ -105,9 +105,26 @@ async fn more_than_twelve_entries_flatten() {
     let e = "e";
     let html = r(view! {
         cx =>
-        <p class=(class!(
-            (e), (e), (e), (e), (e), (e), (e), (e), (e), (e), (e), (e), (e), (e)
-        ))></p>
+        <p
+            class=(class!(
+                (e),
+                (e),
+                (e),
+                (e),
+                (e),
+                (e),
+                (e),
+                (e),
+                (e),
+                (e),
+                (e),
+                (e),
+                (e),
+                (e),
+            ))
+        >
+
+        </p>
     });
     assert_eq!(html, r#"<p class="e e e e e e e e e e e e e e"></p>"#);
 }

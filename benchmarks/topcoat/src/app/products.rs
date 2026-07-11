@@ -71,7 +71,7 @@ async fn products(cx: &Cx) -> Result {
                 <a
                     href=(products_url(1, sort, Some(&entry.slug)))
                     class=(class!(
-                        CHIP_ACTIVE if category == Some(entry.slug.as_str()) else CHIP_INACTIVE
+                        CHIP_ACTIVE if category == Some(entry.slug.as_str()) else CHIP_INACTIVE,
                     ))
                 >
                     (&entry.name)

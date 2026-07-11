@@ -68,6 +68,11 @@ impl topcoat_pretty::PrettyPrint for Class {
                 printer.scan_break();
                 " ".pretty_print(printer);
                 printer.scan_trivia(true, true);
+            } else {
+                // A trailing comma is rendered only when the list breaks across
+                // multiple lines, and vanishes when it stays on one line.
+                printer.scan_text(",".into(), topcoat_pretty::TextMode::Break);
+                printer.advance_cursor(",");
             }
         }
     }
