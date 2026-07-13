@@ -3,7 +3,7 @@
 mod error;
 
 use std::{collections::BTreeSet, io::Read, path::PathBuf, time::Instant};
-use topcoat_pretty::{Registry, pretty_print_str};
+use topcoat_core_grammar::pretty::{Registry, pretty_print_str};
 
 use clap::Args;
 
@@ -81,12 +81,12 @@ impl FmtCommand {
             }
             if selected.contains("fontsource_font_face") {
                 registry
-                    .register_macro::<topcoat_font_fontsource_grammar::font_face::FontsourceFontFace>(
+                    .register_macro::<topcoat_font_grammar::fontsource::font_face::FontsourceFontFace>(
                         "fontsource_font_face",
                     );
             }
             if selected.contains("fontsource_font") {
-                registry.register_macro::<topcoat_font_fontsource_grammar::font::FontsourceFont>(
+                registry.register_macro::<topcoat_font_grammar::fontsource::font::FontsourceFont>(
                     "fontsource_font",
                 );
             }
