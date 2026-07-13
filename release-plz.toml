@@ -83,11 +83,6 @@ release = true
 version_group = "topcoat"
 
 [[package]]
-name = "topcoat-pretty"
-release = true
-version_group = "topcoat"
-
-[[package]]
 name = "topcoat-router"
 release = true
 version_group = "topcoat"
