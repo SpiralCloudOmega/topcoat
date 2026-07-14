@@ -89,7 +89,14 @@ debug = 1
 debug = false
 
 [workspace.dependencies]
-topcoat = { version = "0.0.1", path = "crates/topcoat" }
+# The `topcoat` facade is only ever a dev-dependency of the publishable
+# sub-crates (and a normal dependency of the non-publishable examples), so it
+# deliberately carries NO version. A versioned dev-dependency would force cargo
+# to resolve `topcoat = "^X.Y.Z"` against crates.io when *packaging* a sub-crate
+# for publish. That is impossible during a release, since the sub-crates publish
+# before the facade does. Path-only dev-dependencies are dropped from the published
+# manifest, sidestepping the facade<->sub-crate cycle. Do not add a version here.
+topcoat = { path = "crates/topcoat" }
 topcoat-asset = { version = "0.0.1", path = "crates/topcoat-asset" }
 topcoat-cookie = { version = "0.0.1", path = "crates/topcoat-cookie" }
 topcoat-core = { version = "0.0.1", path = "crates/topcoat-core" }

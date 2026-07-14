@@ -131,8 +131,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
 
       # The docs pin an install version (`topcoat = { version = "X.Y.Z" }`)
-      # in a few feature guides. Source of truth is the `topcoat` version in
-      # `[workspace.dependencies]`, which release-plz bumps on the PR branch.
+      # in a few feature guides. Source of truth is `[workspace.package].version`
+      # (the facade crate inherits it), which release-plz bumps on the PR branch.
       # Re-applied on every run because release-plz force-pushes its branch.
       - name: Sync docs version with release PR
         if: ${{ steps.release-plz.outputs.prs != '' && steps.release-plz.outputs.prs != '[]' }}
@@ -151,10 +151,10 @@ jobs:
           git fetch origin "$branch"
           git checkout "$branch"
 
-          version=$(grep -m1 '^topcoat = { version' Cargo.toml \
-            | sed -E 's/.*version = "([^"]+)".*/\1/')
+          version=$(sed -n '/^\[workspace\.package\]/,/^\[/ s/^version = "\([^"]*\)".*/\1/p' \
+            Cargo.toml | head -1)
           if [ -z "$version" ]; then
-            echo "Failed to parse topcoat version from Cargo.toml" >&2
+            echo "Failed to parse [workspace.package] version from Cargo.toml" >&2
             exit 1
           fi
 
