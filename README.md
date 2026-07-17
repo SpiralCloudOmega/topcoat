@@ -69,15 +69,19 @@ The `view!` macro stays true to HTML and Rust. Use familiar Rust control flow as
 
 ```rust,ignore
 view! {
-    <ul>
-        for post in posts {
-            <li>
-                <a href=(post.url) aria-current=(is_current.then_some("page"))>
-                    (post.title)
-                </a>
-            </li>
+    <nav>
+        for item in nav_items {
+            <a
+                href=(item.url)
+                if item.url == current_path {
+                    aria-current="page"
+                    class="active"
+                }
+            >
+                (item.label)
+            </a>
         }
-    </ul>
+    </nav>
 }
 ```
 
