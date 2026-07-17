@@ -60,13 +60,13 @@ async fn hello(name: &str) -> Result {
 
 ## Install the CLI
 
-`topcoat-cli` ships the `topcoat` binary used for the dev server, source formatting, and asset bundling. Install it from crates.io:
+The Topcoat CLI crate contains a binary used for the dev server, source formatting, and asset bundling. Install it from crates.io:
 
 ```sh
 cargo install topcoat-cli
 ```
 
-This installs a single `topcoat` executable. It is also available as a Cargo subcommand (`cargo topcoat ...`) if you prefer.
+This installs a single `topcoat` executable. It is also available as a Cargo subcommand (`cargo topcoat ...`) if you prefer. Make sure to [include it in your `PATH` environment variable](https://rust-lang.org/tools/install/).
 
 ## Start the dev server
 
