@@ -1,16 +1,23 @@
 mod components;
 
+use components::badge::{BadgeVariant, badge, badge_variants};
 use components::button::{ButtonSize, ButtonVariant, button, button_variants};
 use components::card::{
     card, card_content, card_description, card_footer, card_header, card_title,
 };
+use components::checkbox::checkbox;
 use components::dropdown_menu::{
     dropdown_menu, dropdown_menu_content, dropdown_menu_item, dropdown_menu_label,
     dropdown_menu_separator, dropdown_menu_sub, dropdown_menu_sub_content,
     dropdown_menu_sub_trigger, dropdown_menu_trigger,
 };
 use components::input::input;
+use components::label::label;
+use components::progress::progress;
 use components::select::select;
+use components::spinner::spinner;
+use components::switch::switch;
+use components::textarea::textarea;
 use topcoat::{
     Result,
     asset::{AssetBundle, RouterBuilderAssetExt},
@@ -89,10 +96,12 @@ async fn home() -> Result {
                         demo(deploy_card())
                         coming_soon(name: "Tabs")
                         demo(delete_card())
+                        demo(status_card())
                         demo(branches_card())
                         demo(share_card())
-                        coming_soon(name: "Switch")
+                        demo(settings_card())
                         demo(project_card())
+                        demo(feedback_card())
                         demo(notifications_card())
                         coming_soon(name: "Dialog")
                         coming_soon(name: "Avatar")
@@ -176,14 +185,14 @@ async fn buttons_card() -> Result {
             card_content(
                 <div class="flex flex-col gap-3">
                     <div class="flex flex-wrap items-center gap-2">
-                        for (variant, label) in [
+                        for (variant, name) in [
                             (ButtonVariant::Primary, "Primary"),
                             (ButtonVariant::Secondary, "Secondary"),
                             (ButtonVariant::Outline, "Outline"),
                             (ButtonVariant::Ghost, "Ghost"),
                             (ButtonVariant::Destructive, "Destructive"),
                         ] {
-                            button(size: ButtonSize::Sm, variant: variant, (label))
+                            button(size: ButtonSize::Sm, variant: variant, (name))
                         }
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
@@ -195,7 +204,11 @@ async fn buttons_card() -> Result {
                             variant: ButtonVariant::Outline,
                             icon(data: iconify_icon!("feather:plus"), label: "Add item")
                         )
-                        button(attrs: attributes! { disabled=(true) }, "Saving...")
+                        button(
+                            attrs: attributes! { disabled=(true) },
+                            spinner()
+                            "Saving..."
+                        )
                     </div>
                 </div>
             )
@@ -214,16 +227,16 @@ async fn sign_in_card() -> Result {
             )
             card_content(
                 <form class="flex flex-col gap-4">
-                    <label class="flex flex-col gap-2">
-                        <span class="text-sm font-medium">"Email"</span>
+                    <div class="flex flex-col gap-2">
+                        label(attrs: attributes! { for="email" }, "Email")
                         input(
-                            attrs: attributes! { type="email" placeholder="you@example.com" }
+                            attrs: attributes! { id="email" type="email" placeholder="you@example.com" }
                         )
-                    </label>
-                    <label class="flex flex-col gap-2">
-                        <span class="text-sm font-medium">"Password"</span>
-                        input(attrs: attributes! { type="password" })
-                    </label>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        label(attrs: attributes! { for="password" }, "Password")
+                        input(attrs: attributes! { id="password" type="password" })
+                    </div>
                 </form>
             )
             card_footer(button(attrs: attributes! { class="w-full" }, "Sign in"))
@@ -242,18 +255,21 @@ async fn project_card() -> Result {
             )
             card_content(
                 <form class="flex flex-col gap-4">
-                    <label class="flex flex-col gap-2">
-                        <span class="text-sm font-medium">"Name"</span>
-                        input(attrs: attributes! { placeholder="my-app" })
-                    </label>
-                    <label class="flex flex-col gap-2">
-                        <span class="text-sm font-medium">"Region"</span>
+                    <div class="flex flex-col gap-2">
+                        label(attrs: attributes! { for="project-name" }, "Name")
+                        input(
+                            attrs: attributes! { id="project-name" placeholder="my-app" }
+                        )
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        label(attrs: attributes! { for="region" }, "Region")
                         select(
+                            attrs: attributes! { id="region" },
                             <option>"eu-central-1"</option>
                             <option>"us-east-1"</option>
                             <option>"ap-southeast-2"</option>
                         )
-                    </label>
+                    </div>
                 </form>
             )
             card_footer(
@@ -399,6 +415,60 @@ async fn delete_card() -> Result {
     }
 }
 
+/// Environment statuses told through the badge variants.
+#[component]
+async fn status_card() -> Result {
+    view! {
+        card(
+            card_header(
+                card_title("Deployment status")
+                card_description("Every environment at a glance.")
+            )
+            card_content(
+                <div class="flex flex-col gap-3">
+                    for (env, status, variant) in [
+                        ("production", "Live", BadgeVariant::Primary),
+                        ("staging", "Building", BadgeVariant::Secondary),
+                        ("preview/pr-142", "Queued", BadgeVariant::Outline),
+                        ("legacy-api", "Failed", BadgeVariant::Destructive),
+                    ] {
+                        <div class="flex items-center justify-between gap-4">
+                            <p class="truncate font-mono text-sm">(env)</p>
+                            badge(variant: variant, (status))
+                        </div>
+                    }
+                    <div class="flex items-center justify-between gap-4">
+                        <p class="truncate font-mono text-sm">"preview/pr-143"</p>
+                        <p
+                            class="flex items-center gap-1.5 text-xs text-muted-foreground"
+                        >
+                            spinner()
+                            "Deploying..."
+                        </p>
+                    </div>
+                    <div class="flex flex-col gap-2 border-t border-border pt-4">
+                        <div class="flex items-center justify-between gap-4">
+                            <p class="text-sm text-muted-foreground">
+                                "Rolling out to production"
+                            </p>
+                            <p class="text-sm font-medium">"62%"</p>
+                        </div>
+                        progress(value: 62.0)
+                    </div>
+                </div>
+            )
+            card_footer(
+                <p class="text-sm text-muted-foreground">"Rolled out with"</p>
+                // Anything can borrow a badge's looks: `badge_variants`
+                // returns the class string for a variant.
+                <a href="#changelog" class=(badge_variants(BadgeVariant::Outline))>
+                    "v2.0.4"
+                </a>
+            )
+        )
+    }
+}
+
 /// A share sheet with a copyable link.
 #[component]
 async fn share_card() -> Result {
@@ -422,6 +492,92 @@ async fn share_card() -> Result {
                         icon(data: iconify_icon!("feather:copy"), label: "Copy link")
                     )
                 </div>
+            )
+        )
+    }
+}
+
+/// Notification settings mixing unchecked, checked, and disabled checkboxes.
+#[component]
+async fn settings_card() -> Result {
+    view! {
+        card(
+            card_header(
+                card_title("Notification settings")
+                card_description("Pick what lands in your inbox.")
+            )
+            card_content(
+                <div class="flex flex-col gap-3">
+                    <div class="flex items-center gap-2">
+                        checkbox(
+                            attrs: attributes! { id="notify-deploys" checked=(true) }
+                        )
+                        label(
+                            attrs: attributes! { for="notify-deploys" },
+                            "Deploy results"
+                        )
+                    </div>
+                    <div class="flex items-center gap-2">
+                        checkbox(attrs: attributes! { id="notify-mentions" })
+                        label(attrs: attributes! { for="notify-mentions" }, "Mentions")
+                    </div>
+                    <div class="flex items-center gap-2">
+                        checkbox(
+                            attrs: attributes! { id="notify-digest" checked=(true) disabled=(true) }
+                        )
+                        label(
+                            attrs: attributes! { for="notify-digest" class="opacity-50" },
+                            "Weekly digest (managed by your org)"
+                        )
+                    </div>
+                    <div class="flex flex-col gap-3 border-t border-border pt-4">
+                        <div class="flex items-center justify-between gap-4">
+                            label(
+                                attrs: attributes! { for="notify-push" },
+                                "Push notifications"
+                            )
+                            switch(
+                                attrs: attributes! { id="notify-push" checked=(true) }
+                            )
+                        </div>
+                        <div class="flex items-center justify-between gap-4">
+                            label(
+                                attrs: attributes! { for="notify-quiet" },
+                                "Quiet hours"
+                            )
+                            switch(attrs: attributes! { id="notify-quiet" })
+                        </div>
+                    </div>
+                </div>
+            )
+        )
+    }
+}
+
+/// A feedback form pairing a labeled textarea with a submit action.
+#[component]
+async fn feedback_card() -> Result {
+    view! {
+        card(
+            card_header(
+                card_title("Send feedback")
+                card_description("What should we improve next?")
+            )
+            card_content(
+                <form class="flex flex-col gap-2">
+                    label(attrs: attributes! { for="feedback" }, "Your feedback")
+                    textarea(
+                        attrs: attributes! {
+                            id="feedback"
+                            name="feedback"
+                            placeholder="The dropdown menu could..."
+                        }
+                    )
+                </form>
+            )
+            card_footer(
+                attrs: attributes! { class="justify-end" },
+                button("Send feedback")
             )
         )
     }
