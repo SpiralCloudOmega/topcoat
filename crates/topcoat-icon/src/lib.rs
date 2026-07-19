@@ -1,3 +1,5 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
 mod component;
 mod data;
 #[cfg(feature = "iconify")]

@@ -1,3 +1,5 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
 mod config;
 #[cfg(feature = "router")]
 mod origin;
