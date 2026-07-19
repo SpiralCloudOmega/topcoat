@@ -27,7 +27,7 @@
 [discord-badge]: https://img.shields.io/discord/500028886025895936.svg?logo=discord&style=flat-square
 [discord-url]: https://discord.gg/tokio
 
-Topcoat is a modular, batteries-included Rust framework for building fullstack apps. It prioritizes simplicity and productivity. See the [Getting started guide](https://github.com/tokio-rs/topcoat/blob/main/crates/topcoat/docs/getting_started.md) to set up a new project.
+Topcoat is a modular, batteries-included Rust framework for building fullstack apps. It prioritizes simplicity and productivity. See [Learn Topcoat](#learn-topcoat) to get started, or the [Roadmap](#roadmap) for what's coming next.
 
 > Early-stage and experimental. Expect breaking changes.
 
@@ -235,3 +235,27 @@ view! { <link rel="stylesheet" href=(topcoat::tailwind::stylesheet!())> }
 **Third-party integrations**
 - [Tailwind](https://docs.rs/topcoat/latest/topcoat/tailwind/index.html): Tailwind CSS without Node, wired into the asset pipeline.
 - [htmx](https://docs.rs/topcoat/latest/topcoat/htmx/index.html): drive partial HTML swaps from the server with request/response header helpers.
+
+## Roadmap
+
+Planned features we'd like to bring to Topcoat. Have an idea? [Open an issue](https://github.com/tokio-rs/topcoat/issues).
+
+- [ ] `topcoat new` CLI command to bootstrap pre-configured projects
+- [ ] Static export
+- [ ] (More) reactivity (`topcoat-runtime`)
+- [ ] More Topcoat UI components, full "blocks" e.g. sign-in form
+- [ ] Emailing
+- [ ] Better [Toasty](https://github.com/tokio-rs/toasty) integration (safely create/update records from forms without listing out all the fields)
+- [ ] Validations
+- [ ] OpenAPI endpoints
+- [ ] Docs for how to deploy Topcoat
+- [ ] Pre-rendering for static pages
+- [ ] Streaming SSR / Suspense
+- [ ] Client-side navigation + prefetching
+- [ ] WebSockets
+- [ ] Server-sent events
+- [ ] Image optimization / resizing
+- [ ] Easier-to-use middlewares like rate-limiting, compression, etc.
+- [ ] Authentication
+- [ ] Background jobs
+- [ ] Islands
