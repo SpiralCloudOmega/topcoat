@@ -247,12 +247,12 @@ Planned features we'd like to bring to Topcoat. Have an idea? [Open an issue](ht
 - [ ] Emailing
 - [ ] Better [Toasty](https://github.com/tokio-rs/toasty) integration (safely create/update records from forms without listing out all the fields)
 - [ ] Validations
-- [ ] OpenAPI endpoints
+- [ ] `OpenAPI` endpoints
 - [ ] Docs for how to deploy Topcoat
 - [ ] Pre-rendering for static pages
 - [ ] Streaming SSR / Suspense
 - [ ] Client-side navigation + prefetching
-- [ ] WebSockets
+- [ ] `WebSockets`
 - [ ] Server-sent events
 - [ ] Image optimization / resizing
 - [ ] Easier-to-use middlewares like rate-limiting, compression, etc.
